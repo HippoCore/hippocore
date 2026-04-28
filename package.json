@@ -1,0 +1,12 @@
+{
+  "name": "hippo-core",
+  "private": true,
+  "description": "Persistent memory for AI agents. Drop-in. Zero infrastructure.",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test":  "npm test --workspace=packages/core",
+    "demo":  "node examples/generic/demo.js",
+    "build": "npm run build --workspace=packages/core"
+  },
+  "engines": { "node": ">=18.0.0" }
+}
