@@ -1,0 +1,34 @@
+{
+  "name": "@hippo-core/core",
+  "version": "0.2.0",
+  "description": "Drop-in persistent memory for any AI agent framework",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "hippo-core": "src/cli/index.js"
+  },
+  "exports": {
+    ".":                       "./src/index.js",
+    "./adapters/openclaw":     "./src/adapters/openclaw.js",
+    "./adapters/paperclip":    "./src/adapters/paperclip.js",
+    "./adapters/express":      "./src/adapters/express.js",
+    "./adapters/generic":      "./src/adapters/generic.js",
+    "./dashboard":             "./src/dashboard/server.js"
+  },
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "keywords": [
+    "ai", "agents", "memory", "llm", "openclaw", "paperclip",
+    "langchain", "context", "embeddings", "vector", "hippocore"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+    "openai": "^4.20.0",
+    "uuid": "^9.0.0"
+  },
+  "peerDependencies": {
+    "openai": ">=4.0.0"
+  }
+}
