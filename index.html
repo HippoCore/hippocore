@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hippo Core — Memory for AI Agents</title>
+<meta name="description" content="Persistent memory for AI agents. Drop-in. Zero infrastructure. Your agents remember everything.">
+<meta property="og:title" content="Hippo Core — Memory for AI Agents">
+<meta property="og:description" content="Persistent memory for AI agents. Drop-in. Zero infrastructure.">
+<meta name="theme-color" content="#080808">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #080808;
+  --bg2:     #0e0e0e;
+  --bg3:     #141414;
+  --border:  #1e1e1e;
+  --border2: #2a2a2a;
+  --text:    #e8e8e8;
+  --muted:   #555;
+  --muted2:  #888;
+  --accent:  #d4d4d4;
+  --white:   #f0f0f0;
+  --green:   #4ade80;
+  --mono:    'JetBrains Mono', monospace;
+  --display: 'Syne', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+/* ── Navigation ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(8,8,8,0.95), transparent);
+  backdrop-filter: blur(8px);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.nav-logo-text {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--white);
+  letter-spacing: 0.04em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--muted2);
+  text-decoration: none;
+  font-size: 13px;
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--white); }
+
+.nav-cta {
+  background: var(--white) !important;
+  color: var(--bg) !important;
+  padding: 8px 20px !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+  transition: opacity 0.2s !important;
+}
+
+.nav-cta:hover { opacity: 0.85 !important; }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grid background */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted2);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease forwards 0.1s;
+}
+
+/* Mascot SVG */
+.hero-mascot {
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 40px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.2s;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-mascot svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 40px rgba(255,255,255,0.06));
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  margin-bottom: 32px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.3s;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title .dim { color: var(--muted); }
+
+.hero-subtitle {
+  font-size: clamp(17px, 2.5vw, 22px);
+  color: var(--muted2);
+  max-width: 560px;
+  line-height: 1.6;
+  margin: 0 auto 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.4s;
+  position: relative;
+  z-index: 2;
+  font-weight: 400;
+}
+
+.hero-subtitle strong { color: var(--accent); font-weight: 600; }
+
+.hero-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 14px 20px 14px 24px;
+  margin-bottom: 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.5s;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.hero-install:hover { border-color: #444; }
+
+.hero-install code {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--green);
+  letter-spacing: 0.02em;
+}
+
+.copy-btn {
+  background: var(--border2);
+  border: none;
+  color: var(--muted2);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.copy-btn:hover { background: #333; color: var(--white); }
+.copy-btn.copied { color: var(--green); }
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards 0.6s;
+  position: relative;
+  z-index: 2;
+}
+
+.btn-primary {
+  background: var(--white);
+  color: var(--bg);
+  padding: 14px 32px;
+  border-radius: 6px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: opacity 0.2s, transform 0.2s;
+  display: inline-block;
+}
+
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--muted2);
+  padding: 14px 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.2s, border-color 0.2s, transform 0.2s;
+  display: inline-block;
+}
+
+.btn-secondary:hover { color: var(--white); border-color: #444; transform: translateY(-1px); }
+
+/* ── Problem section ── */
+.problem {
+  padding: 120px 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.problem-statement {
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  margin-bottom: 24px;
+}
+
+.problem-statement .strike {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.problem-body {
+  font-size: 18px;
+  color: var(--muted2);
+  max-width: 600px;
+  margin: 0 auto 64px;
+  line-height: 1.7;
+}
+
+/* Before/After */
+.before-after {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-top: 48px;
+}
+
+.before, .after {
+  padding: 32px;
+  text-align: left;
+}
+
+.before { background: var(--bg2); }
+.after  { background: var(--bg3); }
+
+.ba-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.before .ba-label { color: #e05c5c; }
+.after  .ba-label { color: var(--green); }
+
+.ba-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ba-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted2);
+}
+
+.ba-code .comment { color: var(--muted); }
+.ba-code .keyword { color: #7dd3fc; }
+.ba-code .string  { color: #86efac; }
+.ba-code .fn      { color: #c4b5fd; }
+
+/* ── How it works ── */
+.how {
+  padding: 120px 24px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.how-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  margin-bottom: 16px;
+}
+
+.section-sub {
+  font-size: 17px;
+  color: var(--muted2);
+  margin-bottom: 64px;
+  max-width: 480px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.step {
+  background: var(--bg2);
+  padding: 32px;
+  position: relative;
+}
+
+.step-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+
+.step-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+
+.step-body {
+  font-size: 14px;
+  color: var(--muted2);
+  line-height: 1.6;
+  font-family: var(--mono);
+}
+
+.step-arrow {
+  position: absolute;
+  top: 32px;
+  right: 32px;
+  color: var(--border2);
+  font-size: 20px;
+}
+
+/* ── Features ── */
+.features {
+  padding: 120px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 64px;
+}
+
+.feature {
+  background: var(--bg);
+  padding: 32px;
+  transition: background 0.2s;
+}
+
+.feature:hover { background: var(--bg2); }
+
+.feature-icon {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.feature-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.feature-body {
+  font-size: 13px;
+  color: var(--muted2);
+  line-height: 1.7;
+  font-family: var(--mono);
+}
+
+/* ── Providers ── */
+.providers {
+  padding: 80px 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  text-align: center;
+}
+
+.providers-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+
+.providers-list {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.provider-tag {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted2);
+  letter-spacing: 0.05em;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.provider-tag:hover { border-color: #444; color: var(--white); }
+.provider-tag.local { border-color: rgba(74,222,128,0.3); color: var(--green); }
+
+/* ── Code example ── */
+.code-section {
+  padding: 120px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.code-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.code-tab {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: none;
+  transition: color 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.code-tab.active {
+  color: var(--white);
+  background: var(--bg3);
+  border-color: var(--border);
+}
+
+.code-block {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 32px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.9;
+  overflow-x: auto;
+  display: none;
+}
+
+.code-block.active { display: block; }
+
+.code-block .comment { color: var(--muted); }
+.code-block .keyword { color: #7dd3fc; }
+.code-block .string  { color: #86efac; }
+.code-block .fn      { color: #c4b5fd; }
+.code-block .var     { color: #fde68a; }
+.code-block .num     { color: #fb923c; }
+
+/* ── Stats ── */
+.stats {
+  padding: 80px 24px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 40px;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: clamp(36px, 5vw, 52px);
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ── CTA ── */
+.cta {
+  padding: 160px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-title {
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  line-height: 1.05;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 2;
+}
+
+.cta-sub {
+  font-size: 18px;
+  color: var(--muted2);
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Footer ── */
+footer {
+  padding: 40px 48px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted2);
+  letter-spacing: 0.04em;
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--muted2); }
+
+.footer-copy {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  .before-after { grid-template-columns: 1fr; }
+  footer { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <a href="#" class="nav-logo">
+    <svg class="nav-logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="20" cy="22" rx="14" ry="11" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+      <ellipse cx="20" cy="16" rx="14" ry="10" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+      <rect x="8" y="13" width="5" height="7" rx="1" fill="#1a1a1a" stroke="#555" stroke-width="0.8"/>
+      <rect x="27" y="13" width="5" height="7" rx="1" fill="#1a1a1a" stroke="#555" stroke-width="0.8"/>
+      <rect x="14" y="10" width="12" height="9" rx="2" fill="#111" stroke="#666" stroke-width="1"/>
+      <line x1="17" y1="10" x2="17" y2="19" stroke="#2a2a2a" stroke-width="0.6"/>
+      <line x1="20" y1="10" x2="20" y2="19" stroke="#333" stroke-width="0.8"/>
+      <line x1="23" y1="10" x2="23" y2="19" stroke="#2a2a2a" stroke-width="0.6"/>
+      <line x1="14" y1="14" x2="26" y2="14" stroke="#2a2a2a" stroke-width="0.6"/>
+      <line x1="14" y1="17" x2="26" y2="17" stroke="#333" stroke-width="0.8"/>
+      <circle cx="16" cy="22" r="3" fill="#111" stroke="#777" stroke-width="1"/>
+      <circle cx="24" cy="22" r="3" fill="#111" stroke="#777" stroke-width="1"/>
+      <circle cx="15.5" cy="21.5" r="1.5" fill="#ccc"/>
+      <circle cx="23.5" cy="21.5" r="1.5" fill="#ccc"/>
+      <ellipse cx="20" cy="28" rx="7" ry="4" fill="#1e1e1e" stroke="#3a3a3a" stroke-width="0.8"/>
+    </svg>
+    <span class="nav-logo-text">HIPPO CORE</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#code">Quick start</a></li>
+    <li><a href="https://github.com/HippoCore/hippocore" target="_blank">GitHub</a></li>
+    <li><a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="nav-cta">npm install</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <p class="hero-eyebrow">Open Source · MIT License · v0.2.3</p>
+
+  <!-- Circuit Hippo Mascot -->
+  <div class="hero-mascot">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Glow -->
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft">
+          <feGaussianBlur stdDeviation="1.5"/>
+        </filter>
+      </defs>
+      <circle cx="100" cy="100" r="90" fill="url(#glow)"/>
+
+      <!-- Body -->
+      <ellipse cx="100" cy="130" rx="55" ry="30" fill="#111" stroke="#3a3a3a" stroke-width="1"/>
+      <!-- Head -->
+      <ellipse cx="100" cy="95" rx="55" ry="45" fill="#111" stroke="#3a3a3a" stroke-width="1"/>
+      <!-- Ears -->
+      <rect x="32" y="62" width="20" height="30" rx="4" fill="#141414" stroke="#444" stroke-width="0.8"/>
+      <rect x="148" y="62" width="20" height="30" rx="4" fill="#141414" stroke="#444" stroke-width="0.8"/>
+      <!-- Ear detail -->
+      <line x1="36" y1="72" x2="50" y2="72" stroke="#333" stroke-width="0.8"/>
+      <line x1="36" y1="80" x2="50" y2="80" stroke="#333" stroke-width="0.8"/>
+      <line x1="150" y1="72" x2="164" y2="72" stroke="#333" stroke-width="0.8"/>
+      <line x1="150" y1="80" x2="164" y2="80" stroke="#333" stroke-width="0.8"/>
+
+      <!-- CPU chip on forehead -->
+      <rect x="77" y="55" width="46" height="34" rx="3" fill="#0d0d0d" stroke="#555" stroke-width="1"/>
+      <!-- chip pins -->
+      <rect x="83" y="47" width="4" height="8" rx="1" fill="#333"/>
+      <rect x="93" y="47" width="4" height="8" rx="1" fill="#333"/>
+      <rect x="103" y="47" width="4" height="8" rx="1" fill="#333"/>
+      <rect x="113" y="47" width="4" height="8" rx="1" fill="#333"/>
+      <rect x="69" y="61" width="8" height="4" rx="1" fill="#333"/>
+      <rect x="69" y="71" width="8" height="4" rx="1" fill="#333"/>
+      <rect x="69" y="79" width="8" height="4" rx="1" fill="#333"/>
+      <rect x="123" y="61" width="8" height="4" rx="1" fill="#333"/>
+      <rect x="123" y="71" width="8" height="4" rx="1" fill="#333"/>
+      <rect x="123" y="79" width="8" height="4" rx="1" fill="#333"/>
+      <!-- chip inner grid -->
+      <rect x="81" y="59" width="38" height="26" rx="2" fill="#080808" stroke="#2a2a2a" stroke-width="0.6"/>
+      <line x1="90" y1="59" x2="90" y2="85" stroke="#1e1e1e" stroke-width="0.6"/>
+      <line x1="100" y1="59" x2="100" y2="85" stroke="#222" stroke-width="0.8"/>
+      <line x1="110" y1="59" x2="110" y2="85" stroke="#1e1e1e" stroke-width="0.6"/>
+      <line x1="81" y1="68" x2="119" y2="68" stroke="#1e1e1e" stroke-width="0.6"/>
+      <line x1="81" y1="76" x2="119" y2="76" stroke="#222" stroke-width="0.8"/>
+      <text x="100" y="74" text-anchor="middle" font-family="monospace" font-size="7" fill="#555" letter-spacing="0.1em">HC-1</text>
+
+      <!-- Circuit traces on skull -->
+      <path d="M55 90 L42 90 L42 72 L58 72" stroke="#3a3a3a" stroke-width="0.8" fill="none"/>
+      <path d="M58 78 L45 78 L45 105 L56 105" stroke="#2a2a2a" stroke-width="0.6" fill="none"/>
+      <path d="M145 90 L158 90 L158 72 L142 72" stroke="#3a3a3a" stroke-width="0.8" fill="none"/>
+      <path d="M142 78 L155 78 L155 105 L144 105" stroke="#2a2a2a" stroke-width="0.6" fill="none"/>
+      <!-- trace nodes -->
+      <circle cx="42" cy="72" r="2" fill="#555"/>
+      <circle cx="45" cy="105" r="2" fill="#444"/>
+      <circle cx="158" cy="72" r="2" fill="#555"/>
+      <circle cx="155" cy="105" r="2" fill="#444"/>
+
+      <!-- Eyes -->
+      <ellipse cx="82" cy="105" rx="13" ry="11" fill="#0d0d0d" stroke="#666" stroke-width="1"/>
+      <ellipse cx="82" cy="105" rx="8" ry="7" fill="#111" stroke="#888" stroke-width="0.8"/>
+      <ellipse cx="82" cy="105" rx="5" ry="4.5" fill="#d4d4d4"/>
+      <circle cx="82" cy="105" r="2.5" fill="#080808"/>
+      <circle cx="80" cy="103" r="1.2" fill="#fff" opacity="0.9"/>
+
+      <ellipse cx="118" cy="105" rx="13" ry="11" fill="#0d0d0d" stroke="#666" stroke-width="1"/>
+      <ellipse cx="118" cy="105" rx="8" ry="7" fill="#111" stroke="#888" stroke-width="0.8"/>
+      <ellipse cx="118" cy="105" rx="5" ry="4.5" fill="#d4d4d4"/>
+      <circle cx="118" cy="105" r="2.5" fill="#080808"/>
+      <circle cx="116" cy="103" r="1.2" fill="#fff" opacity="0.9"/>
+
+      <!-- Muzzle -->
+      <ellipse cx="100" cy="125" rx="28" ry="16" fill="#141414" stroke="#333" stroke-width="0.8"/>
+      <ellipse cx="91" cy="122" rx="5" ry="4" fill="#0a0a0a" stroke="#555" stroke-width="0.8"/>
+      <ellipse cx="109" cy="122" rx="5" ry="4" fill="#0a0a0a" stroke="#555" stroke-width="0.8"/>
+    </svg>
+  </div>
+
+  <h1 class="hero-title">
+    Your agents<br>
+    <span class="dim">forget everything.</span>
+  </h1>
+
+  <p class="hero-subtitle">
+    Hippo Core gives AI agents <strong>persistent memory</strong> — so every session builds on the last. Drop-in. Zero infrastructure. Works with any agent framework.
+  </p>
+
+  <div class="hero-install" onclick="copyInstall(this)">
+    <code>npm install @hippo-core/core</code>
+    <button class="copy-btn" id="copy-btn">copy</button>
+  </div>
+
+  <div class="hero-actions">
+    <a href="#code" class="btn-primary">Quick Start →</a>
+    <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-secondary">View on GitHub</a>
+  </div>
+</section>
+
+<!-- Problem -->
+<section class="problem">
+  <p class="section-label reveal">The problem</p>
+  <h2 class="problem-statement reveal">
+    Every AI agent starts<br>from <span class="strike">zero</span> every time.
+  </h2>
+  <p class="problem-body reveal">
+    Without memory, agents are expensive, impersonal, and stateless. They can't learn from past interactions, build relationships, or improve over time. You're paying for the same context window over and over.
+  </p>
+
+  <div class="before-after reveal">
+    <div class="before">
+      <div class="ba-label"><span class="ba-dot"></span>Without Hippo Core</div>
+      <div class="ba-code">
+        <span class="comment">// Every request starts from scratch</span><br>
+        <span class="comment">// Full conversation history sent every time</span><br>
+        <span class="comment">// 3,000+ tokens per request</span><br>
+        <span class="comment">// Agent has no idea who you are</span><br><br>
+        <span class="keyword">const</span> <span class="var">response</span> = <span class="keyword">await</span> agent.<span class="fn">run</span>(<br>
+        &nbsp;&nbsp;<span class="string">"What mortgage should I get?"</span><br>
+        );<br><br>
+        <span class="comment">// "I'd be happy to help! Could you tell</span><br>
+        <span class="comment">//  me your budget and preferences?"</span><br>
+        <span class="comment">// (for the 47th time)</span>
+      </div>
+    </div>
+    <div class="after">
+      <div class="ba-label"><span class="ba-dot"></span>With Hippo Core</div>
+      <div class="ba-code">
+        <span class="comment">// Memories retrieved, context injected</span><br>
+        <span class="comment">// ~400 tokens per request</span><br>
+        <span class="comment">// Agent knows exactly who you are</span><br><br>
+        <span class="keyword">const</span> <span class="var">memory</span> = <span class="fn">createMemory</span>({ <span class="var">apiKey</span> });<br>
+        <span class="keyword">const</span> { <span class="var">systemPrompt</span> } = <span class="keyword">await</span> memory.<span class="fn">before</span>(<br>
+        &nbsp;&nbsp;userId, userMessage<br>
+        );<br><br>
+        <span class="comment">// "Based on your $500k budget and preference</span><br>
+        <span class="comment">//  for fixed rates, I'd recommend..."</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="how" id="how">
+  <div class="how-inner">
+    <p class="section-label reveal">How it works</p>
+    <h2 class="section-title reveal">Four steps. Two lines of code.</h2>
+    <p class="section-sub reveal">Hippo Core sits between your user and your agent. It handles everything.</p>
+
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Store</div>
+        <div class="step-body">Every interaction is embedded and stored in a local SQLite file. AI extracts facts, preferences, and intent automatically.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">Retrieve</div>
+        <div class="step-body">Semantic similarity search finds the most relevant memories for each new request. Ranked by relevance + importance score.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Inject</div>
+        <div class="step-body">Top memories are injected into the system prompt within a configurable token budget. Never exceeds your limits.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-title">Improve</div>
+        <div class="step-body">Feedback signals boost or suppress memories. Important memories surface more. Noise is compressed away daily.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <p class="section-label reveal">Features</p>
+  <h2 class="section-title reveal">Production-ready from day one.</h2>
+
+  <div class="feature-grid reveal">
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Semantic Retrieval</div>
+      <div class="feature-body">Vector embeddings with cosine similarity. Memories ranked by relevance blended with importance score. Not just recency.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Token-Aware Injection</div>
+      <div class="feature-body">Hard token budget enforced on every request. Highest-ranked memories in first. Never blows up your context window.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📦</div>
+      <div class="feature-title">Zero Infrastructure</div>
+      <div class="feature-body">Single SQLite file. No Docker, no Postgres, no cloud account. Works on any machine with one npm install.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔌</div>
+      <div class="feature-title">Framework Adapters</div>
+      <div class="feature-body">Native adapters for OpenClaw and Paperclip. Generic middleware for any other framework. Drop-in, not a rewrite.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">Local First</div>
+      <div class="feature-body">All memory stays on your machine. Works fully offline with Ollama. No data sent anywhere except the LLM calls you configure.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Developer Dashboard</div>
+      <div class="feature-body">Built-in monitoring at localhost:4444. Token savings, memory inspector, retrieval debug, prompt preview. npx @hippo-core/core dashboard</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔄</div>
+      <div class="feature-title">Session Buffer</div>
+      <div class="feature-body">Short-term session history kept separate from long-term memory. Agents handle "what did I just say?" correctly.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📉</div>
+      <div class="feature-title">Auto Compression</div>
+      <div class="feature-body">Daily job merges short-term memories into long-term profiles. Prunes noise. Decays stale importance scores automatically.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">👍</div>
+      <div class="feature-title">Feedback Loop</div>
+      <div class="feature-body">Mark memories as helpful or harmful. Importance scores adjust over time. The more you use it, the smarter it gets.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Providers -->
+<section class="providers">
+  <p class="providers-label reveal">Works with any provider</p>
+  <div class="providers-list reveal">
+    <span class="provider-tag">OpenAI</span>
+    <span class="provider-tag">OpenRouter</span>
+    <span class="provider-tag local">Ollama ★ free & local</span>
+    <span class="provider-tag">Groq</span>
+    <span class="provider-tag local">LM Studio ★ free & local</span>
+    <span class="provider-tag">Azure OpenAI</span>
+    <span class="provider-tag">Any OpenAI-compatible API</span>
+  </div>
+</section>
+
+<!-- Code -->
+<section class="code-section" id="code">
+  <p class="section-label reveal">Quick start</p>
+  <h2 class="section-title reveal">Up and running in 2 minutes.</h2>
+
+  <div style="margin-top:48px" class="reveal">
+    <div class="code-tabs">
+      <button class="code-tab active" onclick="showTab('generic', this)">Any framework</button>
+      <button class="code-tab" onclick="showTab('openclaw', this)">OpenClaw</button>
+      <button class="code-tab" onclick="showTab('paperclip', this)">Paperclip</button>
+      <button class="code-tab" onclick="showTab('setup', this)">CLI setup</button>
+    </div>
+
+    <div class="code-block active" id="tab-generic">
+<span class="comment">// 1. Install</span>
+<span class="comment">// npm install @hippo-core/core</span>
+
+<span class="keyword">import</span> { createMemory } <span class="keyword">from</span> <span class="string">'@hippo-core/core'</span>;
+
+<span class="keyword">const</span> <span class="var">memory</span> = <span class="fn">createMemory</span>({
+  <span class="var">apiKey</span>: process.env.<span class="var">OPENAI_API_KEY</span>,
+  <span class="comment">// or point at Ollama, OpenRouter, Groq...</span>
+});
+
+<span class="keyword">async function</span> <span class="fn">runAgent</span>(userId, userMessage) {
+  <span class="comment">// 2. Retrieve memories + build enriched prompt</span>
+  <span class="keyword">const</span> { <span class="var">systemPrompt</span>, <span class="var">tokenStats</span> } = <span class="keyword">await</span> memory.<span class="fn">before</span>(
+    userId,
+    userMessage,
+    <span class="string">'You are a helpful assistant.'</span>
+  );
+
+  <span class="comment">// 3. Run your agent with memory context injected</span>
+  <span class="keyword">const</span> <span class="var">response</span> = <span class="keyword">await</span> <span class="fn">yourAgent</span>(systemPrompt, userMessage);
+
+  <span class="comment">// 4. Store the interaction</span>
+  <span class="keyword">await</span> memory.<span class="fn">after</span>(userId, userMessage, response);
+
+  <span class="keyword">return</span> response;
+}
+    </div>
+
+    <div class="code-block" id="tab-openclaw">
+<span class="keyword">import</span> { Agent } <span class="keyword">from</span> <span class="string">'openclaw'</span>;
+<span class="keyword">import</span> { withMemory } <span class="keyword">from</span> <span class="string">'@hippo-core/core/adapters/openclaw'</span>;
+
+<span class="comment">// Wrap your existing agent — one line</span>
+<span class="keyword">const</span> <span class="var">agent</span> = <span class="fn">withMemory</span>(<span class="keyword">new</span> <span class="fn">Agent</span>({
+  <span class="var">model</span>: <span class="string">'gpt-4o'</span>,
+  <span class="var">systemPrompt</span>: <span class="string">'You are a mortgage advisor.'</span>,
+  <span class="var">tools</span>: [searchTool, calcTool],
+}));
+
+<span class="comment">// Use exactly as before — memory is automatic</span>
+<span class="keyword">const</span> <span class="var">result</span> = <span class="keyword">await</span> agent.<span class="fn">run</span>(<span class="string">'user_123'</span>, userMessage);
+    </div>
+
+    <div class="code-block" id="tab-paperclip">
+<span class="keyword">import</span> { createAgent } <span class="keyword">from</span> <span class="string">'paperclip-ai'</span>;
+<span class="keyword">import</span> { memoryPlugin } <span class="keyword">from</span> <span class="string">'@hippo-core/core/adapters/paperclip'</span>;
+
+<span class="keyword">const</span> <span class="var">agent</span> = <span class="fn">createAgent</span>({ <span class="var">model</span>: <span class="string">'gpt-4o'</span> });
+
+<span class="comment">// Register the plugin — that's it</span>
+agent.<span class="fn">use</span>(<span class="fn">memoryPlugin</span>());
+
+<span class="keyword">const</span> <span class="var">result</span> = <span class="keyword">await</span> agent.<span class="fn">run</span>({
+  <span class="var">userId</span>: <span class="string">'user_123'</span>,
+  <span class="var">message</span>: <span class="string">'What mortgage fits my budget?'</span>,
+});
+<span class="comment">// Agent now has full memory context</span>
+    </div>
+
+    <div class="code-block" id="tab-setup">
+<span class="comment"># Interactive setup wizard</span>
+<span class="fn">npx @hippo-core/core setup</span>
+
+<span class="comment"># Choose your provider:</span>
+<span class="comment"># [1] OpenAI  [2] OpenRouter  [3] Ollama (free)  [4] Groq  [5] LM Studio</span>
+
+<span class="comment"># Check status anytime</span>
+<span class="fn">npx @hippo-core/core status</span>
+
+<span class="comment"># Open developer dashboard at localhost:4444</span>
+<span class="fn">npx @hippo-core/core dashboard</span>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats">
+  <div class="stats-inner">
+    <div class="reveal">
+      <div class="stat-num">~87%</div>
+      <div class="stat-label">Token reduction</div>
+    </div>
+    <div class="reveal">
+      <div class="stat-num">2</div>
+      <div class="stat-label">Lines to integrate</div>
+    </div>
+    <div class="reveal">
+      <div class="stat-num">0</div>
+      <div class="stat-label">Infrastructure needed</div>
+    </div>
+    <div class="reveal">
+      <div class="stat-num">5</div>
+      <div class="stat-label">AI providers supported</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2 class="cta-title reveal">Give your agents<br>a memory.</h2>
+  <p class="cta-sub reveal">Open source. MIT licensed. Ships today.</p>
+  <div class="hero-actions reveal">
+    <a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="btn-primary">npm install →</a>
+    <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-secondary">View on GitHub</a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">🦛 HIPPO CORE</div>
+  <ul class="footer-links">
+    <li><a href="https://github.com/HippoCore/hippocore" target="_blank">GitHub</a></li>
+    <li><a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank">NPM</a></li>
+    <li><a href="https://github.com/HippoCore/hippocore/blob/main/LICENSE" target="_blank">MIT License</a></li>
+  </ul>
+  <p class="footer-copy">Named for the hippocampus — the brain's memory center.</p>
+</footer>
+
+<script>
+// Copy install command
+function copyInstall(el) {
+  navigator.clipboard.writeText('npm install @hippo-core/core').then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Code tabs
+function showTab(id, btn) {
+  document.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.code-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, i * 80);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
