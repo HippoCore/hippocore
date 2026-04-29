@@ -418,6 +418,50 @@ async function runStatus() {
   console.log(`\n  ${green('🦛 Hippo Core is running.')}\n`);
 }
 
+
+// ── RE-EMBED COMMAND ──────────────────────────────────────────────────────────
+async function runReEmbed() {
+  header('Re-Embed Migration');
+
+  if (!existsSync(CONFIG_PATH)) {
+    console.log(red('  No config found. Run setup first.'));
+    process.exit(1);
+  }
+
+  const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+
+  console.log(`  ${arrow} Current embedding model: ${bold(config.embeddingModel || 'text-embedding-3-small')}`);
+  console.log(`  ${arrow} Database: ${gray(config.dbPath || '.hippo-core/memory.db')}`);
+  console.log('');
+  console.log(yellow('  ⚠  This will re-generate ALL embeddings using the current model.'));
+  console.log(yellow('     This is needed when switching embedding models.'));
+  console.log(gray('     It may cost API credits if using a paid provider.'));
+  console.log('');
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const confirm = await ask(rl, 'Continue? (yes/no)', 'no');
+  rl.close();
+
+  if (confirm.toLowerCase() !== 'yes') {
+    console.log(gray('\n  Cancelled.\n'));
+    return;
+  }
+
+  console.log('');
+  const { reEmbedAll } = await import('../services/memory.js');
+
+  let lastPct = -1;
+  const result = await reEmbedAll(config, (done, total) => {
+    const pct = Math.floor(done / total * 100);
+    if (pct !== lastPct) {
+      process.stdout.write(`\r  ${arrow} Re-embedding... ${pct}% (${done}/${total})`);
+      lastPct = pct;
+    }
+  });
+
+  console.log(`\n\n  ${tick} Re-embedded ${result.done} of ${result.total} memories.\n`);
+}
+
 // ── DASHBOARD COMMAND ────────────────────────────────────────────────────────
 async function runDashboard() {
   let config = {};
@@ -437,6 +481,8 @@ if (command === 'setup') {
   runSetup().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else if (command === 'status') {
   runStatus().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 're-embed') {
+  runReEmbed().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else if (command === 'dashboard') {
   runDashboard().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else {
@@ -446,7 +492,8 @@ if (command === 'setup') {
   console.log('  Commands:');
   console.log(`  ${cyan('npx @hippo-core/core setup')}      — first-time setup and connection test`);
   console.log(`  ${cyan('npx @hippo-core/core status')}     — check if everything is running`);
-  console.log(`  ${cyan('npx @hippo-core/core dashboard')}  — open developer monitoring dashboard`);
+  console.log(`  ${cyan('npx @hippo-core/core dashboard')}   — open developer monitoring dashboard`);
+  console.log(`  ${cyan('npx @hippo-core/core re-embed')}   — migrate embeddings after changing model`);
   console.log('');
   console.log('  Supported providers:');
   PROVIDERS.forEach(p => {
