@@ -1,6 +1,6 @@
 {
   "name": "@hippo-core/core",
-  "version": "0.2.3",
+  "version": "0.3.3",
   "description": "Drop-in persistent memory for any AI agent framework",
   "type": "module",
   "main": "src/index.js",
