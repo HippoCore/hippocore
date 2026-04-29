@@ -6,10 +6,9 @@
 // ██║  ██║██║██║     ██║     ╚██████╔╝    ╚██████╗╚██████╔╝██║  ██║███████╗
 // ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝      ╚═════╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
 //
-// Persistent memory for AI agents. Zero infrastructure.
+// v0.3.0 — Multi-agent namespacing + split embedding config
 // Named for the hippocampus — the brain's memory center.
 
-// Core memory operations
 export {
   addMemory,
   queryMemories,
@@ -17,10 +16,10 @@ export {
   getUserProfile,
   deleteMemory,
   compressMemories,
+  reEmbedAll,
   getMetrics,
 } from './services/memory.js';
 
-// AI utilities
 export {
   embed,
   extractStructured,
@@ -30,35 +29,45 @@ export {
   estimateTokens,
 } from './services/ai.js';
 
-// Adapters
 export { createMemoryAgent, createMemoryMiddleware } from './adapters/generic.js';
 export { withMemory as withMemoryOpenClaw, memoryTools  } from './adapters/openclaw.js';
 export { memoryPlugin, withMemory as withMemoryPaperclip } from './adapters/paperclip.js';
 export { createMemoryRouter, startMemoryServer } from './adapters/express.js';
-
-// Dashboard
 export { startDashboard } from './dashboard/server.js';
-
-// DB
 export { getDb, closeDb } from './db/sqlite.js';
 
 /**
- * createMemory — main entry point.
+ * createMemory — main entry point for Hippo Core v0.3.0
  *
- * Config options:
- *   apiKey, baseURL, model, embeddingModel  — AI provider
- *   dbPath                                  — SQLite file (default: .hippo-core/memory.db)
- *   memoryLimit        (default: 5)         — max memories retrieved per query
- *   maxMemoryTokens    (default: 500)       — token budget for memory injection
- *   sessionHistoryLen  (default: 4)         — max short-term session turns
- *   retrievalLimit     (default: 100)       — candidate pool size for similarity search
+ * Config:
+ *   // Chat model — flexible, can change per agent
+ *   apiKey, baseURL, model
+ *
+ *   // Embedding model — LOCKED, never change after setup
+ *   embeddingApiKey, embeddingBaseURL, embeddingModel
+ *
+ *   // Namespacing — multi-agent support
+ *   agentId    (default: 'default')   identifies which agent
+ *   orgId      (default: 'default')   organisation namespace
+ *   scope      (default: 'user')      retrieval scope: user|agent|org|user+agent
+ *
+ *   // Storage
+ *   dbPath     (default: .hippo-core/memory.db)
+ *
+ *   // Retrieval
+ *   memoryLimit        (default: 5)
+ *   maxMemoryTokens    (default: 500)
+ *   sessionHistoryLen  (default: 4)
  *
  * @example
- * import { createMemory } from '@hippo-core/core';
- * const memory = createMemory({ apiKey: process.env.OPENAI_API_KEY });
+ * // Single agent
+ * const memory = createMemory({ apiKey: '...', agentId: 'mortgage-advisor' });
  *
- * const { systemPrompt, tokenStats } = await memory.before(userId, userMessage);
- * const response = await yourAgent(systemPrompt, userMessage);
- * await memory.after(userId, userMessage, response);
+ * // Multiple agents sharing memory
+ * const mortgageAgent = createMemory({ apiKey: '...', agentId: 'mortgage', orgId: 'acme' });
+ * const supportAgent  = createMemory({ apiKey: '...', agentId: 'support',  orgId: 'acme' });
+ *
+ * // Retrieve org-wide shared memory
+ * const orgMemory = createMemory({ apiKey: '...', orgId: 'acme', scope: 'org' });
  */
 export { createMemoryMiddleware as createMemory } from './adapters/generic.js';
