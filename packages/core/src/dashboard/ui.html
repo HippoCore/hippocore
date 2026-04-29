@@ -5,429 +5,174 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hippo Core — Dashboard</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg:       #0d0d0d;
-    --surface:  #141414;
-    --border:   #222;
-    --border2:  #2a2a2a;
-    --text:     #e0e0e0;
-    --muted:    #666;
-    --accent:   #c8c8c8;
-    --green:    #4caf7d;
-    --red:      #e05c5c;
-    --yellow:   #c8a84b;
-    --blue:     #5b8ef0;
-    --mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    --sans:     'Inter', system-ui, sans-serif;
-  }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 13px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  /* ── Layout ── */
-  header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  header h1 {
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--accent);
-  }
-
-  header .version {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--border2);
-    padding: 2px 8px;
-    border-radius: 3px;
-  }
-
-  header .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    margin-left: auto;
-    box-shadow: 0 0 6px var(--green);
-  }
-
-  header .status-dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
-
-  nav {
-    display: flex;
-    gap: 2px;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-
-  nav button {
-    background: none;
-    border: none;
-    color: var(--muted);
-    padding: 10px 16px;
-    cursor: pointer;
-    font-size: 12px;
-    font-family: var(--sans);
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
-    letter-spacing: 0.03em;
-  }
-
-  nav button:hover   { color: var(--text); }
-  nav button.active  { color: var(--accent); border-bottom-color: var(--accent); }
-
-  main {
-    padding: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  /* ── Panels ── */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-
-  .panel-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .panel-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .panel-body { padding: 16px; }
-
-  /* ── Stat grid ── */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .stat {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 12px 14px;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .stat-value {
-    font-family: var(--mono);
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--accent);
-  }
-
-  .stat-value.green { color: var(--green); }
-  .stat-value.red   { color: var(--red); }
-  .stat-value.blue  { color: var(--blue); }
-
-  .stat-sub {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 3px;
-  }
-
-  /* ── Table ── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  th {
-    text-align: left;
-    padding: 8px 12px;
-    color: var(--muted);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--border);
-    font-size: 11px;
-    text-transform: uppercase;
-  }
-
-  td {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-    color: var(--text);
-  }
-
-  tr:last-child td { border-bottom: none; }
-  tr:hover td      { background: rgba(255,255,255,0.02); }
-
-  td.mono { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-  td.code { font-family: var(--mono); font-size: 11px; }
-
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-family: var(--mono);
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
-
-  .badge-green  { background: rgba(76,175,125,0.15); color: var(--green); border: 1px solid rgba(76,175,125,0.3); }
-  .badge-yellow { background: rgba(200,168,75,0.15);  color: var(--yellow); border: 1px solid rgba(200,168,75,0.3); }
-  .badge-red    { background: rgba(224,92,92,0.15);   color: var(--red);    border: 1px solid rgba(224,92,92,0.3); }
-  .badge-blue   { background: rgba(91,142,240,0.15);  color: var(--blue);   border: 1px solid rgba(91,142,240,0.3); }
-  .badge-gray   { background: rgba(255,255,255,0.05); color: var(--muted);  border: 1px solid var(--border2); }
-
-  /* ── Forms ── */
-  .form-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-
-  input, textarea, select {
-    background: var(--bg);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: var(--mono);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  input:focus, textarea:focus, select:focus {
-    border-color: var(--accent);
-  }
-
-  input.wide, textarea.wide { flex: 1; min-width: 200px; }
-  textarea { resize: vertical; min-height: 60px; }
-
-  button.btn {
-    background: var(--border2);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: background 0.15s, border-color 0.15s;
-    white-space: nowrap;
-  }
-
-  button.btn:hover   { background: #333; border-color: #444; }
-  button.btn.primary { background: rgba(200,200,200,0.1); border-color: rgba(200,200,200,0.3); color: var(--accent); }
-  button.btn.primary:hover { background: rgba(200,200,200,0.15); }
-
-  /* ── Code blocks ── */
-  pre {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 14px;
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.7;
-    overflow: auto;
-    color: var(--text);
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  pre .role   { color: var(--blue);   font-weight: 600; }
-  pre .memory { color: var(--green); }
-  pre .system { color: var(--yellow); }
-  pre .user   { color: var(--accent); }
-
-  /* ── Progress bar ── */
-  .progress-wrap {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    height: 6px;
-    overflow: hidden;
-    margin-top: 6px;
-  }
-
-  .progress-bar {
-    height: 100%;
-    background: var(--green);
-    border-radius: 3px;
-    transition: width 0.4s ease;
-  }
-
-  .progress-bar.yellow { background: var(--yellow); }
-  .progress-bar.red    { background: var(--red); }
-
-  /* ── Section ── */
-  .section { display: none; }
-  .section.active { display: block; }
-
-  /* ── Empty state ── */
-  .empty {
-    text-align: center;
-    padding: 40px;
-    color: var(--muted);
-    font-size: 12px;
-  }
-
-  .empty .emoji { font-size: 32px; margin-bottom: 8px; }
-
-  /* ── Score pill ── */
-  .score {
-    font-family: var(--mono);
-    font-size: 11px;
-  }
-
-  /* ── Tag list ── */
-  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tag  { background: var(--bg); border: 1px solid var(--border2); padding: 2px 7px; border-radius: 3px; font-size: 10px; font-family: var(--mono); color: var(--muted); }
-
-  /* ── Refresh ── */
-  .refresh-time { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-
-  /* ── Two col ── */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
-
-  .loading { color: var(--muted); font-size: 12px; padding: 20px; text-align: center; }
-
-  #error-bar {
-    display: none;
-    background: rgba(224,92,92,0.1);
-    border: 1px solid rgba(224,92,92,0.3);
-    color: var(--red);
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    border-radius: 4px;
-    font-size: 12px;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0d0d0d;
+  --surface: #141414;
+  --border:  #222;
+  --border2: #2a2a2a;
+  --text:    #e0e0e0;
+  --muted:   #555;
+  --muted2:  #888;
+  --accent:  #d4d4d4;
+  --green:   #4caf7d;
+  --red:     #e05c5c;
+  --yellow:  #c8a84b;
+  --blue:    #5b8ef0;
+  --purple:  #a78bfa;
+  --mono:    'JetBrains Mono','Fira Code',monospace;
+  --sans:    'Inter',system-ui,sans-serif;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:13px; line-height:1.6; min-height:100vh; }
+header { display:flex; align-items:center; gap:12px; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:100; }
+header h1 { font-size:15px; font-weight:600; letter-spacing:0.04em; color:var(--accent); }
+.version { font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--border2); padding:2px 8px; border-radius:3px; }
+.status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); margin-left:auto; box-shadow:0 0 6px var(--green); }
+.status-dot.red { background:var(--red); box-shadow:0 0 6px var(--red); }
+nav { display:flex; gap:2px; padding:0 24px; border-bottom:1px solid var(--border); background:var(--surface); overflow-x:auto; }
+nav button { background:none; border:none; color:var(--muted); padding:10px 16px; cursor:pointer; font-size:12px; font-family:var(--sans); border-bottom:2px solid transparent; transition:color .15s,border-color .15s; letter-spacing:.03em; white-space:nowrap; }
+nav button:hover { color:var(--text); }
+nav button.active { color:var(--accent); border-bottom-color:var(--accent); }
+main { padding:24px; max-width:1300px; margin:0 auto; }
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:16px; overflow:hidden; }
+.panel-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.panel-title { font-size:11px; font-weight:600; color:var(--accent); letter-spacing:.08em; text-transform:uppercase; }
+.panel-body { padding:16px; }
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.stat { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:12px 14px; }
+.stat-label { font-size:10px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+.stat-value { font-family:var(--mono); font-size:20px; font-weight:600; color:var(--accent); }
+.stat-value.green  { color:var(--green);  }
+.stat-value.blue   { color:var(--blue);   }
+.stat-value.purple { color:var(--purple); }
+.stat-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:left; padding:8px 12px; color:var(--muted); font-weight:500; letter-spacing:.05em; border-bottom:1px solid var(--border); font-size:10px; text-transform:uppercase; }
+td { padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,.02); }
+td.mono { font-family:var(--mono); font-size:11px; color:var(--muted); }
+.badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:10px; font-family:var(--mono); font-weight:500; letter-spacing:.04em; }
+.badge-green  { background:rgba(76,175,125,.15);  color:var(--green);  border:1px solid rgba(76,175,125,.3); }
+.badge-blue   { background:rgba(91,142,240,.15);  color:var(--blue);   border:1px solid rgba(91,142,240,.3); }
+.badge-purple { background:rgba(167,139,250,.15); color:var(--purple); border:1px solid rgba(167,139,250,.3); }
+.badge-yellow { background:rgba(200,168,75,.15);  color:var(--yellow); border:1px solid rgba(200,168,75,.3); }
+.badge-gray   { background:rgba(255,255,255,.05); color:var(--muted2); border:1px solid var(--border2); }
+.badge-red    { background:rgba(224,92,92,.15);   color:var(--red);    border:1px solid rgba(224,92,92,.3); }
+.form-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+input, select { background:var(--bg); border:1px solid var(--border2); color:var(--text); padding:7px 12px; border-radius:4px; font-size:12px; font-family:var(--mono); outline:none; transition:border-color .15s; }
+input:focus, select:focus { border-color:var(--accent); }
+input.wide { flex:1; min-width:180px; }
+button.btn { background:var(--border2); border:1px solid var(--border2); color:var(--text); padding:7px 16px; border-radius:4px; font-size:12px; cursor:pointer; font-family:var(--sans); transition:background .15s; white-space:nowrap; }
+button.btn:hover { background:#333; }
+button.btn.primary { background:rgba(200,200,200,.1); border-color:rgba(200,200,200,.3); color:var(--accent); }
+pre { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:14px; font-family:var(--mono); font-size:11px; line-height:1.8; overflow:auto; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+.progress-wrap { background:var(--bg); border:1px solid var(--border); border-radius:3px; height:6px; overflow:hidden; margin-top:6px; }
+.progress-bar  { height:100%; background:var(--green); border-radius:3px; transition:width .4s; }
+.progress-bar.yellow { background:var(--yellow); }
+.progress-bar.red    { background:var(--red); }
+.section { display:none; }
+.section.active { display:block; }
+.empty { text-align:center; padding:40px; color:var(--muted); font-size:12px; }
+.empty .emoji { font-size:32px; margin-bottom:8px; }
+.two-col   { display:grid; grid-template-columns:1fr 1fr;       gap:16px; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr;   gap:16px; }
+@media (max-width:900px) { .two-col,.three-col { grid-template-columns:1fr; } }
+.loading { color:var(--muted); font-size:12px; padding:20px; text-align:center; }
+.refresh-time { font-family:var(--mono); font-size:10px; color:var(--muted); }
+#error-bar { display:none; background:rgba(224,92,92,.1); border:1px solid rgba(224,92,92,.3); color:var(--red); padding:10px 16px; margin-bottom:16px; border-radius:4px; font-size:12px; }
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.tag  { background:var(--bg); border:1px solid var(--border2); padding:2px 7px; border-radius:3px; font-size:10px; font-family:var(--mono); color:var(--muted); }
 </style>
 </head>
 <body>
-
 <header>
   <span style="font-size:20px">🦛</span>
   <h1>Hippo Core</h1>
-  <span class="version">v0.1.3</span>
+  <span class="version">v0.3.0</span>
   <span style="color:var(--muted);font-size:12px;margin-left:4px">/ Developer Dashboard</span>
   <div class="status-dot" id="status-dot"></div>
 </header>
-
 <nav>
-  <button class="active" onclick="showSection('overview')">Overview</button>
-  <button onclick="showSection('inspector')">Memory Inspector</button>
-  <button onclick="showSection('retrieval')">Retrieval Debug</button>
-  <button onclick="showSection('prompt')">Prompt Preview</button>
-  <button onclick="showSection('performance')">Performance</button>
+  <button class="active" onclick="showSection('overview',this)">Overview</button>
+  <button onclick="showSection('agents',this)">Agents</button>
+  <button onclick="showSection('inspector',this)">Memory Inspector</button>
+  <button onclick="showSection('retrieval',this)">Retrieval Debug</button>
+  <button onclick="showSection('prompt',this)">Prompt Preview</button>
+  <button onclick="showSection('performance',this)">Performance</button>
 </nav>
-
 <main>
   <div id="error-bar"></div>
 
-  <!-- ── OVERVIEW ── -->
   <div class="section active" id="s-overview">
-
     <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Token Savings</span>
-        <span class="refresh-time" id="last-refresh">—</span>
-      </div>
-      <div class="panel-body">
-        <div class="stat-grid" id="token-stats">
-          <div class="loading">Loading...</div>
-        </div>
-      </div>
+      <div class="panel-header"><span class="panel-title">Token Savings</span><span class="refresh-time" id="last-refresh">—</span></div>
+      <div class="panel-body"><div class="stat-grid" id="token-stats"><div class="loading">Loading...</div></div></div>
     </div>
-
-    <div class="two-col">
+    <div class="three-col">
       <div class="panel">
         <div class="panel-header"><span class="panel-title">Memory Store</span></div>
-        <div class="panel-body">
-          <div class="stat-grid" id="memory-stats">
-            <div class="loading">Loading...</div>
-          </div>
-        </div>
+        <div class="panel-body"><div class="stat-grid" id="memory-stats"><div class="loading">Loading...</div></div></div>
       </div>
-
       <div class="panel">
         <div class="panel-header"><span class="panel-title">By Type</span></div>
-        <div class="panel-body" id="type-stats">
-          <div class="loading">Loading...</div>
-        </div>
+        <div class="panel-body" id="type-stats"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Embedding Models</span></div>
+        <div class="panel-body" id="emb-stats"><div class="loading">Loading...</div></div>
       </div>
     </div>
-
     <div class="panel">
       <div class="panel-header"><span class="panel-title">Recent Requests</span></div>
       <div id="recent-requests"><div class="loading">Loading...</div></div>
     </div>
-
   </div>
 
-  <!-- ── MEMORY INSPECTOR ── -->
+  <div class="section" id="s-agents">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Agent Overview</span></div>
+      <div id="agent-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="two-col">
+      <div class="panel"><div class="panel-header"><span class="panel-title">By Agent</span></div><div id="agent-breakdown"><div class="loading">Loading...</div></div></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">Top Users</span></div><div id="top-users"><div class="loading">Loading...</div></div></div>
+    </div>
+  </div>
+
   <div class="section" id="s-inspector">
     <div class="panel">
       <div class="panel-header"><span class="panel-title">Memory Inspector</span></div>
       <div class="panel-body">
         <div class="form-row">
-          <input class="wide" id="inspector-user" placeholder="user_id" />
-          <button class="btn primary" onclick="loadMemories()">Load Memories</button>
+          <input class="wide" id="inspector-user" placeholder="user_id"/>
+          <input id="inspector-agent" placeholder="agent_id (optional)" style="width:180px"/>
+          <input id="inspector-org"   placeholder="org_id (optional)"   style="width:160px"/>
+          <button class="btn primary" onclick="loadMemories()">Load</button>
         </div>
       </div>
     </div>
     <div id="memory-list"></div>
   </div>
 
-  <!-- ── RETRIEVAL DEBUG ── -->
   <div class="section" id="s-retrieval">
     <div class="panel">
       <div class="panel-header"><span class="panel-title">Retrieval Debug</span></div>
       <div class="panel-body">
         <div class="form-row">
-          <input class="wide" id="ret-user" placeholder="user_id" />
-          <input class="wide" id="ret-query" placeholder="Test query..." />
-          <input id="ret-limit" type="number" value="5" min="1" max="20" style="width:60px" />
+          <input class="wide" id="ret-user"  placeholder="user_id"/>
+          <input id="ret-agent" placeholder="agent_id (optional)" style="width:160px"/>
+          <input id="ret-org"   placeholder="org_id (optional)"   style="width:140px"/>
+        </div>
+        <div class="form-row">
+          <input class="wide" id="ret-query" placeholder="Test query..."/>
+          <select id="ret-scope" style="width:150px">
+            <option value="user">scope: user</option>
+            <option value="agent">scope: agent</option>
+            <option value="org">scope: org</option>
+            <option value="user+agent">scope: user+agent</option>
+          </select>
+          <input id="ret-limit" type="number" value="5" min="1" max="20" style="width:60px"/>
           <button class="btn primary" onclick="debugRetrieval()">Retrieve</button>
         </div>
       </div>
@@ -435,18 +180,24 @@
     <div id="retrieval-results"></div>
   </div>
 
-  <!-- ── PROMPT PREVIEW ── -->
   <div class="section" id="s-prompt">
     <div class="panel">
       <div class="panel-header"><span class="panel-title">Prompt Preview</span></div>
       <div class="panel-body">
         <div class="form-row">
-          <input class="wide" id="pp-user" placeholder="user_id" />
-          <input class="wide" id="pp-message" placeholder="User message..." />
+          <input class="wide" id="pp-user"    placeholder="user_id"/>
+          <input class="wide" id="pp-message" placeholder="User message..."/>
         </div>
         <div class="form-row">
-          <textarea class="wide" id="pp-system" placeholder="Base system prompt (optional)..." style="height:50px"></textarea>
-          <input id="pp-budget" type="number" value="500" min="100" max="2000" style="width:80px" title="Max memory tokens" />
+          <input id="pp-agent" placeholder="agent_id (optional)" style="width:160px"/>
+          <input id="pp-org"   placeholder="org_id (optional)"   style="width:140px"/>
+          <select id="pp-scope" style="width:150px">
+            <option value="user">scope: user</option>
+            <option value="agent">scope: agent</option>
+            <option value="org">scope: org</option>
+            <option value="user+agent">scope: user+agent</option>
+          </select>
+          <input id="pp-budget" type="number" value="500" min="100" max="2000" style="width:80px" title="Max memory tokens"/>
           <button class="btn primary" onclick="previewPrompt()">Preview</button>
         </div>
       </div>
@@ -454,377 +205,206 @@
     <div id="prompt-output"></div>
   </div>
 
-  <!-- ── PERFORMANCE ── -->
   <div class="section" id="s-performance">
     <div class="panel">
       <div class="panel-header"><span class="panel-title">Performance Metrics</span></div>
-      <div class="panel-body">
-        <div class="stat-grid" id="perf-stats">
-          <div class="loading">Loading...</div>
-        </div>
-      </div>
+      <div class="panel-body"><div class="stat-grid" id="perf-stats"><div class="loading">Loading...</div></div></div>
     </div>
-    <div class="panel">
-      <div class="panel-header"><span class="panel-title">Top Users by Memory Count</span></div>
-      <div id="top-users"><div class="loading">Loading...</div></div>
+    <div class="two-col">
+      <div class="panel"><div class="panel-header"><span class="panel-title">Top Users</span></div><div id="perf-users"><div class="loading">Loading...</div></div></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">Embedding Health</span></div><div id="emb-health"><div class="loading">Loading...</div></div></div>
     </div>
   </div>
-
 </main>
 
 <script>
-const API = '';
+function showSection(id,btn){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));document.getElementById('s-'+id).classList.add('active');if(btn)btn.classList.add('active');if(id==='agents')loadAgents();}
+async function get(p){const r=await fetch(p);return r.json();}
+async function post(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json();}
+function showError(m){const b=document.getElementById('error-bar');b.textContent='⚠ '+m;b.style.display='block';setTimeout(()=>{b.style.display='none';},5000);}
+function badge(t,c='gray'){return`<span class="badge badge-${c}">${esc(t)}</span>`;}
+function score(v,h=0.7,l=0.4){const c=v>=h?'var(--green)':v>=l?'var(--yellow)':'var(--red)';return`<span style="font-family:var(--mono);font-size:11px;color:${c}">${v}</span>`;}
+function relativeTime(iso){if(!iso)return'—';const d=Date.now()-new Date(iso).getTime();if(d<60000)return`${Math.floor(d/1000)}s ago`;if(d<3600000)return`${Math.floor(d/60000)}m ago`;if(d<86400000)return`${Math.floor(d/3600000)}h ago`;return`${Math.floor(d/86400000)}d ago`;}
+function pct(v){const c=v>50?'':v>10?'yellow':'red';const cv=v>50?'var(--green)':v>10?'var(--yellow)':'var(--red)';return`<div class="stat-value" style="color:${cv}">${v}%</div><div class="progress-wrap"><div class="progress-bar ${c}" style="width:${Math.min(100,v)}%"></div></div>`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function nsTag(a,o){const p=[];if(a&&a!=='default')p.push(badge(a,'purple'));if(o&&o!=='default')p.push(badge(o,'blue'));return p.join(' ')||badge('default','gray');}
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('s-' + id).classList.add('active');
-  event.target.classList.add('active');
+async function loadOverview(){
+  try{
+    const d=await get('/metrics');
+    document.getElementById('status-dot').className='status-dot';
+    document.getElementById('last-refresh').textContent='Updated '+new Date().toLocaleTimeString();
+    const ts=d.token_savings||{};
+    document.getElementById('token-stats').innerHTML=`
+      <div class="stat"><div class="stat-label">Baseline/Request</div><div class="stat-value">${(ts.baseline_per_request||0).toLocaleString()}</div><div class="stat-sub">tokens (full history)</div></div>
+      <div class="stat"><div class="stat-label">Actual/Request</div><div class="stat-value blue">${(ts.actual_per_request||0).toLocaleString()}</div><div class="stat-sub">with Hippo Core</div></div>
+      <div class="stat"><div class="stat-label">Token Reduction</div>${pct(ts.reduction_percent||0)}<div class="stat-sub">${ts.verdict||'no data yet'}</div></div>
+      <div class="stat"><div class="stat-label">Total Requests</div><div class="stat-value">${(d.request_log?.total_requests||0).toLocaleString()}</div></div>`;
+    document.getElementById('memory-stats').innerHTML=`
+      <div class="stat"><div class="stat-label">Memories</div><div class="stat-value">${(d.total_memories||0).toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Users</div><div class="stat-value">${(d.total_users||0).toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Agents</div><div class="stat-value purple">${(d.total_agents||0).toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Orgs</div><div class="stat-value blue">${(d.total_orgs||0).toLocaleString()}</div></div>`;
+    const types=d.by_type||[];
+    document.getElementById('type-stats').innerHTML=types.length?`<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${types.map(t=>`<tr><td>${badge(t.type,'blue')}</td><td class="mono">${t.count}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="emoji">🦛</div>No memories yet</div>';
+    const embs=d.embedding_models||[];
+    document.getElementById('emb-stats').innerHTML=embs.length?`<table><thead><tr><th>Model</th><th>Count</th><th>Dims</th></tr></thead><tbody>${embs.map(e=>`<tr><td class="mono" style="font-size:10px">${esc(e.model)}</td><td class="mono">${e.count}</td><td class="mono">${e.dimensions}</td></tr>`).join('')}</tbody></table>`:'<div class="empty" style="padding:20px;font-size:11px">No embeddings yet</div>';
+    const reqs=d.recent_requests||[];
+    document.getElementById('recent-requests').innerHTML=reqs.length?`<table><thead><tr><th>User</th><th>Agent</th><th>Query</th><th>Mem</th><th>Mem Tokens</th><th>Total</th><th>Latency</th><th>When</th></tr></thead><tbody>${reqs.map(r=>`<tr><td class="mono">${esc(r.user_id?.slice(0,10)||'—')}</td><td>${nsTag(r.agent_id,r.org_id)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(r.query||'—')}</td><td class="mono">${r.memories_retrieved||0}</td><td class="mono">${r.memory_tokens_used||0}</td><td class="mono">${r.total_tokens||0}</td><td class="mono">${r.retrieval_ms||0}ms</td><td class="mono" style="color:var(--muted)">${relativeTime(r.created_at)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="emoji">📭</div>No requests yet. Run your agent to see data.</div>';
+    const rl=d.request_log||{};
+    document.getElementById('perf-stats').innerHTML=`
+      <div class="stat"><div class="stat-label">Avg Retrieval</div><div class="stat-value">${rl.avg_retrieval_ms||0}<span style="font-size:11px;color:var(--muted)">ms</span></div></div>
+      <div class="stat"><div class="stat-label">Total Retrievals</div><div class="stat-value">${(rl.total_retrievals||0).toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Avg Mem Tokens</div><div class="stat-value">${rl.avg_memory_tokens||0}</div></div>
+      <div class="stat"><div class="stat-label">Avg Total Tokens</div><div class="stat-value blue">${rl.avg_total_tokens||0}</div></div>`;
+    const users=d.top_users||[];
+    document.getElementById('perf-users').innerHTML=users.length?`<table><thead><tr><th>User</th><th>Memories</th><th>Tokens</th></tr></thead><tbody>${users.map(u=>`<tr><td class="mono">${esc(u.user_id)}</td><td class="mono">${u.memory_count}</td><td class="mono">${u.total_tokens||0}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No users yet</div>';
+    const embs2=d.embedding_models||[];
+    document.getElementById('emb-health').innerHTML=embs2.length?`<table><thead><tr><th>Model</th><th>Count</th><th>Dims</th><th>Status</th></tr></thead><tbody>${embs2.map((e,i)=>`<tr><td class="mono" style="font-size:10px">${esc(e.model)}</td><td class="mono">${e.count}</td><td class="mono">${e.dimensions}</td><td>${i===0?badge('active','green'):badge('legacy','yellow')}</td></tr>`).join('')}</tbody></table>${embs2.length>1?'<div style="padding:12px 16px;font-size:11px;color:var(--yellow)">⚠ Multiple embedding models detected. Run npx @hippo-core/core re-embed</div>':''}`:'<div class="empty" style="padding:20px;font-size:11px">No embedding data yet</div>';
+  }catch(err){document.getElementById('status-dot').className='status-dot red';showError('Cannot connect: '+err.message);}
 }
 
-// ── API helpers ───────────────────────────────────────────────────────────────
-async function get(path) {
-  const r = await fetch(API + path);
-  return r.json();
+async function loadAgents(){
+  try{
+    const d=await get('/agents');
+    const agents=d.agents||[];
+    document.getElementById('agent-list').innerHTML=agents.length?`<table><thead><tr><th>Agent ID</th><th>Org</th><th>Memories</th><th>Users</th><th>Last Active</th></tr></thead><tbody>${agents.map(a=>`<tr><td>${badge(a.agent_id||'default','purple')}</td><td>${badge(a.org_id||'default','blue')}</td><td class="mono">${a.memory_count}</td><td class="mono">${a.user_count}</td><td class="mono" style="color:var(--muted)">${relativeTime(a.last_active)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="emoji">🤖</div>No agents yet.<br><span style="font-size:11px">Set agentId in your config to start tracking.</span></div>';
+    const byAgent={};
+    agents.forEach(a=>{const k=a.agent_id||'default';byAgent[k]=(byAgent[k]||0)+a.memory_count;});
+    document.getElementById('agent-breakdown').innerHTML=Object.keys(byAgent).length?`<table><thead><tr><th>Agent</th><th>Memories</th></tr></thead><tbody>${Object.entries(byAgent).map(([k,v])=>`<tr><td>${badge(k,'purple')}</td><td class="mono">${v}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No data</div>';
+    const ud=await get('/users');
+    const users=ud.users||[];
+    document.getElementById('top-users').innerHTML=users.length?`<table><thead><tr><th>User</th><th>Agent</th><th>Org</th><th>Memories</th></tr></thead><tbody>${users.slice(0,10).map(u=>`<tr><td class="mono" style="font-size:11px">${esc(u.user_id?.slice(0,14)||'—')}</td><td>${badge(u.agent_id||'default','purple')}</td><td>${badge(u.org_id||'default','blue')}</td><td class="mono">${u.memory_count}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No users yet</div>';
+  }catch(err){showError(err.message);}
 }
 
-async function post(path, body) {
-  const r = await fetch(API + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return r.json();
-}
-
-function showError(msg) {
-  const bar = document.getElementById('error-bar');
-  bar.textContent = '⚠ ' + msg;
-  bar.style.display = 'block';
-  setTimeout(() => { bar.style.display = 'none'; }, 5000);
-}
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-function badge(text, color = 'gray') {
-  return `<span class="badge badge-${color}">${text}</span>`;
-}
-
-function score(val, high = 0.7, low = 0.4) {
-  const color = val >= high ? 'green' : val >= low ? 'yellow' : 'red';
-  return `<span class="score" style="color:var(--${color})">${val}</span>`;
-}
-
-function relativeTime(iso) {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60000)   return `${Math.floor(diff/1000)}s ago`;
-  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
-  return `${Math.floor(diff/86400000)}d ago`;
-}
-
-function pct(val) {
-  const color = val > 50 ? 'green' : val > 10 ? 'yellow' : 'red';
-  const barColor = val > 50 ? '' : val > 10 ? 'yellow' : 'red';
-  return `
-    <div class="stat-value ${color}">${val}%</div>
-    <div class="progress-wrap"><div class="progress-bar ${barColor}" style="width:${Math.min(100,val)}%"></div></div>
-  `;
-}
-
-// ── OVERVIEW ─────────────────────────────────────────────────────────────────
-async function loadOverview() {
-  try {
-    const d = await get('/metrics');
-    document.getElementById('status-dot').className = 'status-dot';
-    document.getElementById('last-refresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
-
-    // Token savings
-    const ts = d.token_savings || {};
-    document.getElementById('token-stats').innerHTML = `
-      <div class="stat">
-        <div class="stat-label">Baseline / Request</div>
-        <div class="stat-value">${(ts.baseline_per_request||0).toLocaleString()}</div>
-        <div class="stat-sub">tokens (full history)</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Actual / Request</div>
-        <div class="stat-value blue">${(ts.actual_per_request||0).toLocaleString()}</div>
-        <div class="stat-sub">tokens (with Hippo Core)</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Token Reduction</div>
-        ${pct(ts.reduction_percent||0)}
-        <div class="stat-sub">${ts.verdict||'no data yet'}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Total Requests</div>
-        <div class="stat-value">${(d.request_log?.total_requests||0).toLocaleString()}</div>
-        <div class="stat-sub">logged</div>
-      </div>
-    `;
-
-    // Memory stats
-    document.getElementById('memory-stats').innerHTML = `
-      <div class="stat">
-        <div class="stat-label">Total Memories</div>
-        <div class="stat-value">${(d.total_memories||0).toLocaleString()}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Users</div>
-        <div class="stat-value">${(d.total_users||0).toLocaleString()}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg Importance</div>
-        <div class="stat-value">${d.avg_importance||0}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg Tokens/Memory</div>
-        <div class="stat-value">${d.avg_tokens_per_memory||0}</div>
-      </div>
-    `;
-
-    // By type
-    const types = d.by_type || [];
-    document.getElementById('type-stats').innerHTML = types.length
-      ? `<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>
-          ${types.map(t => `<tr><td>${badge(t.type,'blue')}</td><td class="mono">${t.count}</td></tr>`).join('')}
-         </tbody></table>`
-      : '<div class="empty"><div class="emoji">🦛</div>No memories yet</div>';
-
-    // Recent requests
-    const reqs = d.recent_requests || [];
-    document.getElementById('recent-requests').innerHTML = reqs.length
-      ? `<table>
-          <thead><tr><th>User</th><th>Query</th><th>Memories</th><th>Mem Tokens</th><th>Total Tokens</th><th>Latency</th><th>When</th></tr></thead>
-          <tbody>
-            ${reqs.map(r => `<tr>
-              <td class="mono">${r.user_id?.slice(0,12)||'—'}</td>
-              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.query||'—'}</td>
-              <td class="mono">${r.memories_retrieved||0}</td>
-              <td class="mono">${r.memory_tokens_used||0}</td>
-              <td class="mono">${r.total_tokens||0}</td>
-              <td class="mono">${r.retrieval_ms||0}ms</td>
-              <td class="mono" style="color:var(--muted)">${relativeTime(r.created_at)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`
-      : '<div class="empty"><div class="emoji">📭</div>No requests logged yet. Run your agent to see data.</div>';
-
-    // Performance tab
-    const rl = d.request_log || {};
-    document.getElementById('perf-stats').innerHTML = `
-      <div class="stat">
-        <div class="stat-label">Avg Retrieval</div>
-        <div class="stat-value">${rl.avg_retrieval_ms||0}<span style="font-size:12px;color:var(--muted)">ms</span></div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Total Retrievals</div>
-        <div class="stat-value">${(rl.total_retrievals||0).toLocaleString()}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg Memory Tokens</div>
-        <div class="stat-value">${rl.avg_memory_tokens||0}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Total Memories</div>
-        <div class="stat-value">${(d.total_memories||0).toLocaleString()}</div>
-      </div>
-    `;
-
-    const users = d.top_users || [];
-    document.getElementById('top-users').innerHTML = users.length
-      ? `<table>
-          <thead><tr><th>User ID</th><th>Memories</th><th>Total Tokens</th></tr></thead>
-          <tbody>
-            ${users.map(u => `<tr>
-              <td class="mono">${u.user_id}</td>
-              <td class="mono">${u.memory_count}</td>
-              <td class="mono">${u.total_tokens||0}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`
-      : '<div class="empty">No users yet</div>';
-
-  } catch (err) {
-    document.getElementById('status-dot').className = 'status-dot red';
-    showError('Cannot connect to Hippo Core dashboard server: ' + err.message);
-  }
-}
-
-// ── MEMORY INSPECTOR ─────────────────────────────────────────────────────────
-async function loadMemories() {
-  const userId = document.getElementById('inspector-user').value.trim();
-  if (!userId) return showError('Enter a user_id');
-
-  document.getElementById('memory-list').innerHTML = '<div class="loading">Loading...</div>';
-
-  try {
-    const d = await get(`/memory/list?user_id=${encodeURIComponent(userId)}`);
-    const memories = d.memories || [];
-
-    if (!memories.length) {
-      document.getElementById('memory-list').innerHTML =
-        '<div class="empty"><div class="emoji">🦛</div>No memories found for this user.</div>';
-      return;
-    }
-
-    document.getElementById('memory-list').innerHTML = memories.map(m => `
+async function loadMemories(){
+  const userId=document.getElementById('inspector-user').value.trim();
+  const agentId=document.getElementById('inspector-agent').value.trim()||undefined;
+  const orgId=document.getElementById('inspector-org').value.trim()||undefined;
+  if(!userId)return showError('Enter a user_id');
+  document.getElementById('memory-list').innerHTML='<div class="loading">Loading...</div>';
+  try{
+    let url=`/memory/list?user_id=${encodeURIComponent(userId)}`;
+    if(agentId)url+=`&agent_id=${encodeURIComponent(agentId)}`;
+    if(orgId)url+=`&org_id=${encodeURIComponent(orgId)}`;
+    const d=await get(url);
+    const memories=d.memories||[];
+    if(!memories.length){document.getElementById('memory-list').innerHTML='<div class="empty"><div class="emoji">🦛</div>No memories found.</div>';return;}
+    document.getElementById('memory-list').innerHTML=memories.map(m=>`
       <div class="panel" style="margin-bottom:10px">
         <div class="panel-header">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            ${badge(m.type, 'blue')}
-            <span class="mono" style="font-size:10px;color:var(--muted)">${m.id?.slice(0,8)}...</span>
+            ${badge(m.type,'blue')} ${nsTag(m.agent_id,m.org_id)}
+            <span class="mono" style="font-size:10px;color:var(--muted)">${esc(m.id?.slice(0,8))}...</span>
             <span style="color:var(--muted);font-size:11px">${relativeTime(m.created_at)}</span>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span style="font-size:11px;color:var(--muted)">importance: ${score(parseFloat((m.importance_score||0).toFixed(2)))}</span>
-            <span style="font-size:11px;color:var(--muted)">tokens: ${m.token_count||0}</span>
-            <span style="font-size:11px;color:var(--muted)">accessed: ${m.access_count||0}×</span>
+          <div style="display:flex;gap:12px">
+            <span style="font-size:11px;color:var(--muted)">imp: ${score(parseFloat((m.importance_score||0).toFixed(2)))}</span>
+            <span style="font-size:11px;color:var(--muted)">${m.token_count||0} tok</span>
+            <span style="font-size:11px;color:var(--muted)">${m.access_count||0}× accessed</span>
           </div>
         </div>
         <div class="panel-body">
-          <div style="color:var(--text);margin-bottom:10px;font-size:12px">${m.content?.slice(0,300)}${m.content?.length>300?'…':''}</div>
-          ${m.facts?.length ? `<div style="margin-bottom:6px"><span style="color:var(--muted);font-size:11px">Facts: </span><div class="tags">${m.facts.map(f=>`<span class="tag">${f}</span>`).join('')}</div></div>` : ''}
-          ${m.preferences?.length ? `<div style="margin-bottom:6px"><span style="color:var(--muted);font-size:11px">Preferences: </span><div class="tags">${m.preferences.map(p=>`<span class="tag">${p}</span>`).join('')}</div></div>` : ''}
-          ${m.intent ? `<div><span style="color:var(--muted);font-size:11px">Intent: </span><span style="font-size:12px">${m.intent}</span></div>` : ''}
+          <div style="margin-bottom:10px;font-size:12px">${esc(m.content?.slice(0,300))}${(m.content?.length||0)>300?'…':''}</div>
+          ${m.facts?.length?`<div style="margin-bottom:6px"><span style="color:var(--muted);font-size:11px">Facts: </span><div class="tags">${m.facts.map(f=>`<span class="tag">${esc(f)}</span>`).join('')}</div></div>`:''}
+          ${m.preferences?.length?`<div style="margin-bottom:6px"><span style="color:var(--muted);font-size:11px">Prefs: </span><div class="tags">${m.preferences.map(p=>`<span class="tag">${esc(p)}</span>`).join('')}</div></div>`:''}
+          ${m.intent?`<div><span style="color:var(--muted);font-size:11px">Intent: </span><span style="font-size:12px">${esc(m.intent)}</span></div>`:''}
         </div>
-      </div>
-    `).join('');
-  } catch (err) {
-    showError(err.message);
-  }
+      </div>`).join('');
+  }catch(err){showError(err.message);}
 }
 
-// ── RETRIEVAL DEBUG ───────────────────────────────────────────────────────────
-async function debugRetrieval() {
-  const userId = document.getElementById('ret-user').value.trim();
-  const query  = document.getElementById('ret-query').value.trim();
-  const limit  = parseInt(document.getElementById('ret-limit').value, 10) || 5;
-
-  if (!userId || !query) return showError('Enter user_id and query');
-
-  document.getElementById('retrieval-results').innerHTML = '<div class="loading">Retrieving...</div>';
-
-  try {
-    const d = await post('/memory/query-debug', { user_id: userId, query, limit });
-
-    if (!d.memories?.length) {
-      document.getElementById('retrieval-results').innerHTML =
-        '<div class="empty"><div class="emoji">🔍</div>No memories found for this query.</div>';
-      return;
-    }
-
-    document.getElementById('retrieval-results').innerHTML = `
+async function debugRetrieval(){
+  const userId=document.getElementById('ret-user').value.trim();
+  const query=document.getElementById('ret-query').value.trim();
+  const agentId=document.getElementById('ret-agent').value.trim()||undefined;
+  const orgId=document.getElementById('ret-org').value.trim()||undefined;
+  const scope=document.getElementById('ret-scope').value;
+  const limit=parseInt(document.getElementById('ret-limit').value,10)||5;
+  if(!userId||!query)return showError('Enter user_id and query');
+  document.getElementById('retrieval-results').innerHTML='<div class="loading">Retrieving...</div>';
+  try{
+    const d=await post('/memory/query-debug',{user_id:userId,agent_id:agentId,org_id:orgId,query,limit,scope});
+    if(!d.memories?.length){document.getElementById('retrieval-results').innerHTML='<div class="empty"><div class="emoji">🔍</div>No memories found.</div>';return;}
+    document.getElementById('retrieval-results').innerHTML=`
       <div class="panel" style="margin-bottom:12px">
         <div class="panel-body" style="display:flex;gap:20px;flex-wrap:wrap">
-          <span style="font-size:12px">Retrieved <strong>${d.memories.length}</strong> memories</span>
-          <span style="font-size:12px;color:var(--muted)">Retrieval time: <strong style="color:var(--text)">${d.retrieval_ms}ms</strong></span>
+          <span>Retrieved <strong>${d.memories.length}</strong> memories</span>
+          <span style="color:var(--muted)">Scope: ${badge(d.scope||'user','blue')}</span>
+          <span style="color:var(--muted)">Latency: <strong style="color:var(--text)">${d.retrieval_ms}ms</strong></span>
         </div>
       </div>
-      ${d.memories.map((m, i) => `
+      ${d.memories.map((m,i)=>`
         <div class="panel" style="margin-bottom:10px">
           <div class="panel-header">
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="color:var(--muted);font-size:11px;font-family:var(--mono)">#${i+1}</span>
-              ${badge(m.type,'blue')}
-              <span style="font-size:11px">similarity: ${score(m.similarity, 0.8, 0.5)}</span>
-              <span style="font-size:11px;color:var(--muted)">importance: ${score(parseFloat((m.importance_score||0).toFixed(2)))}</span>
-              <span style="font-size:11px;color:var(--muted)">blended: ${score(m.blended_score, 0.7, 0.4)}</span>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span style="color:var(--muted);font-family:var(--mono);font-size:11px">#${i+1}</span>
+              ${badge(m.type,'blue')} ${nsTag(m.agent_id,m.org_id)}
+              <span style="font-size:11px">sim: ${score(m.similarity,0.8,0.5)}</span>
+              <span style="font-size:11px;color:var(--muted)">imp: ${score(parseFloat((m.importance_score||0).toFixed(2)))}</span>
+              <span style="font-size:11px;color:var(--muted)">blended: ${score(m.blended_score,0.7,0.4)}</span>
             </div>
-            <span style="font-size:11px;color:var(--muted)">${m.token_count||0} tokens</span>
+            <span style="font-size:11px;color:var(--muted)">${m.token_count||0} tok</span>
           </div>
           <div class="panel-body">
-            <div style="margin-bottom:10px;font-size:12px">${m.content}</div>
-            <div style="font-size:11px;color:var(--green);margin-bottom:6px">Why selected: ${m.why_selected}</div>
-            ${m.structured?.facts?.length ? `<div class="tags">${m.structured.facts.map(f=>`<span class="tag">${f}</span>`).join('')}</div>` : ''}
+            <div style="margin-bottom:8px;font-size:12px">${esc(m.content)}</div>
+            <div style="font-size:11px;color:var(--green);margin-bottom:6px">Why: ${esc(m.why_selected)}</div>
+            ${m.structured?.facts?.length?`<div class="tags">${m.structured.facts.map(f=>`<span class="tag">${esc(f)}</span>`).join('')}</div>`:''}
           </div>
-        </div>
-      `).join('')}
-    `;
-  } catch (err) {
-    showError(err.message);
-  }
+        </div>`).join('')}`;
+  }catch(err){showError(err.message);}
 }
 
-// ── PROMPT PREVIEW ────────────────────────────────────────────────────────────
-async function previewPrompt() {
-  const userId  = document.getElementById('pp-user').value.trim();
-  const message = document.getElementById('pp-message').value.trim();
-  const system  = document.getElementById('pp-system').value.trim();
-  const budget  = parseInt(document.getElementById('pp-budget').value, 10) || 500;
-
-  if (!userId || !message) return showError('Enter user_id and user message');
-
-  document.getElementById('prompt-output').innerHTML = '<div class="loading">Building prompt...</div>';
-
-  try {
-    const d = await post('/prompt/preview', {
-      user_id:           userId,
-      user_message:      message,
-      base_system_prompt: system || 'You are a helpful assistant.',
-      max_memory_tokens: budget,
-    });
-
-    const ts = d.token_stats || {};
-    const ps = d.prompt_structure || {};
-
-    document.getElementById('prompt-output').innerHTML = `
+async function previewPrompt(){
+  const userId=document.getElementById('pp-user').value.trim();
+  const message=document.getElementById('pp-message').value.trim();
+  const agentId=document.getElementById('pp-agent').value.trim()||undefined;
+  const orgId=document.getElementById('pp-org').value.trim()||undefined;
+  const scope=document.getElementById('pp-scope').value;
+  const budget=parseInt(document.getElementById('pp-budget').value,10)||500;
+  if(!userId||!message)return showError('Enter user_id and user message');
+  document.getElementById('prompt-output').innerHTML='<div class="loading">Building prompt...</div>';
+  try{
+    const d=await post('/prompt/preview',{user_id:userId,agent_id:agentId,org_id:orgId,user_message:message,scope,max_memory_tokens:budget});
+    const ts=d.token_stats||{};
+    const ps=d.prompt_structure||{};
+    const bp=Math.min(100,((ts.memoryTokensUsed||0)/(ts.memoryTokensBudget||500)*100));
+    document.getElementById('prompt-output').innerHTML=`
       <div class="panel" style="margin-bottom:12px">
         <div class="panel-header"><span class="panel-title">Token Accounting</span></div>
         <div class="panel-body">
           <div class="stat-grid">
-            <div class="stat">
-              <div class="stat-label">Memory Tokens Used</div>
-              <div class="stat-value">${ts.memoryTokensUsed||0} <span style="font-size:12px;color:var(--muted)">/ ${ts.memoryTokensBudget||500}</span></div>
-              <div class="progress-wrap"><div class="progress-bar ${ts.memoryTokensUsed/ts.memoryTokensBudget > 0.9 ? 'red' : ts.memoryTokensUsed/ts.memoryTokensBudget > 0.7 ? 'yellow' : ''}" style="width:${Math.min(100,(ts.memoryTokensUsed||0)/(ts.memoryTokensBudget||500)*100)}%"></div></div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Memories Injected</div>
-              <div class="stat-value">${ts.memoriesInjected||0} <span style="font-size:12px;color:var(--muted)">of ${ts.memoriesAvailable||0}</span></div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">System Tokens</div>
-              <div class="stat-value">${ts.systemTokens||0}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Total Estimated</div>
-              <div class="stat-value blue">${ts.totalEstimated||0}</div>
-            </div>
+            <div class="stat"><div class="stat-label">Memory Tokens</div><div class="stat-value">${ts.memoryTokensUsed||0} <span style="font-size:11px;color:var(--muted)">/ ${ts.memoryTokensBudget||500}</span></div><div class="progress-wrap"><div class="progress-bar ${bp>90?'red':bp>70?'yellow':''}" style="width:${bp}%"></div></div></div>
+            <div class="stat"><div class="stat-label">Injected</div><div class="stat-value">${ts.memoriesInjected||0} <span style="font-size:11px;color:var(--muted)">of ${ts.memoriesAvailable||0}</span></div></div>
+            <div class="stat"><div class="stat-label">System Tokens</div><div class="stat-value">${ts.systemTokens||0}</div></div>
+            <div class="stat"><div class="stat-label">Total Estimated</div><div class="stat-value blue">${ts.totalEstimated||0}</div></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            ${badge('scope: '+(scope||'user'),'blue')}
+            ${agentId?badge('agent: '+agentId,'purple'):''}
+            ${orgId?badge('org: '+orgId,'blue'):''}
           </div>
         </div>
       </div>
-
       <div class="panel">
         <div class="panel-header"><span class="panel-title">Exact Prompt Structure</span></div>
         <div class="panel-body">
-          <pre><span class="role">── SYSTEM ──────────────────────────────</span>
-<span class="system">${escHtml(ps.system||'')}</span>
+          <pre><span style="color:var(--blue);font-weight:600">── SYSTEM ──────────────────────────────────────────</span>
+<span style="color:var(--yellow)">${esc(ps.system||'')}</span>
 
-<span class="role">── SESSION HISTORY (${(ps.session_history||[]).length} turns) ──────</span>
-${(ps.session_history||[]).map(t=>`<span style="color:var(--muted)">[${t.role}]</span> ${escHtml(t.content?.slice(0,200)||'')}`).join('\n') || '<span style="color:var(--muted)">(none)</span>'}
+<span style="color:var(--blue);font-weight:600">── SESSION HISTORY (${(ps.session_history||[]).length} turns) ────────────────</span>
+${(ps.session_history||[]).map(t=>`<span style="color:var(--muted)">[${t.role}]</span> ${esc(t.content?.slice(0,200)||'')}`).join('\n')||'<span style="color:var(--muted)">(none)</span>'}
 
-<span class="role">── USER INPUT ──────────────────────────</span>
-<span class="user">${escHtml(message)}</span></pre>
+<span style="color:var(--blue);font-weight:600">── USER INPUT ──────────────────────────────────────</span>
+<span style="color:var(--accent)">${esc(message)}</span></pre>
         </div>
-      </div>
-    `;
-  } catch (err) {
-    showError(err.message);
-  }
+      </div>`;
+  }catch(err){showError(err.message);}
 }
 
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
 loadOverview();
-setInterval(loadOverview, 15000); // auto-refresh every 15s
+setInterval(loadOverview,15000);
 </script>
 </body>
 </html>
