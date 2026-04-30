@@ -462,6 +462,16 @@ async function runReEmbed() {
   console.log(`\n\n  ${tick} Re-embedded ${result.done} of ${result.total} memories.\n`);
 }
 
+
+// ── MCP SERVER COMMAND ────────────────────────────────────────────────────────
+async function runMcp() {
+  // MCP server communicates via stdio — no console output allowed
+  // Importing the module starts the stdin listener automatically
+  await import('../mcp/server.js');
+  // Keep process alive waiting for stdin
+  await new Promise(() => {});
+}
+
 // ── DASHBOARD COMMAND ────────────────────────────────────────────────────────
 async function runDashboard() {
   let config = {};
@@ -483,6 +493,8 @@ if (command === 'setup') {
   runStatus().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else if (command === 're-embed') {
   runReEmbed().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 'mcp') {
+  runMcp().catch(() => process.exit(1));
 } else if (command === 'dashboard') {
   runDashboard().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else {
@@ -494,6 +506,7 @@ if (command === 'setup') {
   console.log(`  ${cyan('npx @hippo-core/core status')}     — check if everything is running`);
   console.log(`  ${cyan('npx @hippo-core/core dashboard')}   — open developer monitoring dashboard`);
   console.log(`  ${cyan('npx @hippo-core/core re-embed')}   — migrate embeddings after changing model`);
+  console.log(`  ${cyan('npx @hippo-core/core mcp')}          — start MCP server (for OpenClaw, Paperclip, Hermes)`);
   console.log('');
   console.log('  Supported providers:');
   PROVIDERS.forEach(p => {
