@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { addMemory, getMemoryHistory, queryMemories, resolveConflict, retractMemory } from '../src/services/memory.js';
+import { addMemory, addMemories, getMemoryHistory, queryMemories, resolveConflict, retractMemory } from '../src/services/memory.js';
 import { closeDb } from '../src/db/sqlite.js';
 
 function harness(t, extractor = async content => ({ should_remember: true, facts: [content], preferences: [], entities: {} })) {
@@ -72,4 +72,28 @@ test('retraction removes a memory from normal recall but preserves history', asy
   assert.deepEqual(await queryMemories({ user_id: 'ria', query: 'favorite color' }, config), []);
   const history = await getMemoryHistory({ user_id: 'ria', memory_key: 'profile.favorite_color' }, config);
   assert.equal(history[0].status, 'retracted');
+});
+
+test('one interaction becomes independently governed atomic memories', async t => {
+  const config = harness(t);
+  config.itemExtractor = async () => ({
+    should_remember: true,
+    memories: [
+      { content: 'Nora lives in Ottawa', type: 'long_term', memory_key: 'profile.home_city', confidence: 1, facts: ['Nora lives in Ottawa'] },
+      { content: 'Nora prefers concise answers', type: 'preference', memory_key: 'preference.response_detail', confidence: 1, preferences: ['Nora prefers concise answers'] },
+      { content: 'Nora uses Vim', type: 'preference', memory_key: 'preference.editor', confidence: 1, preferences: ['Nora uses Vim'] },
+    ],
+  });
+  const result = await addMemories({ user_id: 'nora', source_ref: 'message-7', content: 'I live in Ottawa, prefer concise answers, and use Vim.' }, config);
+  assert.equal(result.memories.length, 3);
+  assert.deepEqual(result.memories.map(memory => memory.memory_key), [
+    'profile.home_city', 'preference.response_detail', 'preference.editor',
+  ]);
+
+  await addMemory({ user_id: 'nora', memory_key: 'preference.editor', content: 'Nora now uses VS Code' }, config);
+  const city = await queryMemories({ user_id: 'nora', query: 'home city Ottawa', limit: 1 }, config);
+  const editor = await queryMemories({ user_id: 'nora', query: 'editor VS Code', limit: 1 }, config);
+  assert.equal(city[0].memory_key, 'profile.home_city');
+  assert.match(editor[0].content, /VS Code/);
+  assert.equal(editor[0].provenance.source_kind, 'user');
 });

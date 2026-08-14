@@ -13,7 +13,7 @@
 //   sessionHistoryLen (default: 4)
 //   scope             (default: 'user') — retrieval scope
 
-import { addMemory, queryMemories } from '../services/memory.js';
+import { addMemory, addMemories, queryMemories } from '../services/memory.js';
 import { buildPrompt, estimateTokens } from '../services/ai.js';
 import { getDb, saveDb } from '../db/sqlite.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -70,12 +70,13 @@ export function createMemoryMiddleware(config = {}) {
 
     async after(userId, userMessage, agentResponse, type = 'conversation') {
       const responseText = typeof agentResponse === 'string' ? agentResponse : JSON.stringify(agentResponse);
-      return addMemory({
+      return addMemories({
         user_id:  userId,
         agent_id: cfg.agentId,
         org_id:   cfg.orgId,
         type,
         content: `User: ${userMessage}\nAssistant: ${responseText.slice(0, 1000)}`,
+        source_kind: 'interaction',
       }, cfg);
     },
 
@@ -109,7 +110,7 @@ export function createMemoryAgent(agentFn, config = {}) {
 
     const responseText = typeof response === 'string' ? response : JSON.stringify(response);
     setImmediate(() => {
-      addMemory({ user_id: userId, agent_id: config.agentId || 'default', org_id: config.orgId || 'default', type: 'conversation', content: `User: ${userMessage}\nAssistant: ${responseText.slice(0, 1000)}` }, config).catch(console.error);
+      addMemories({ user_id: userId, agent_id: config.agentId || 'default', org_id: config.orgId || 'default', type: 'conversation', source_kind: 'interaction', content: `User: ${userMessage}\nAssistant: ${responseText.slice(0, 1000)}` }, config).catch(console.error);
     });
 
     return response;

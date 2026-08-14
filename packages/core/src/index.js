@@ -11,6 +11,7 @@
 
 export {
   addMemory,
+  addMemories,
   queryMemories,
   applyFeedback,
   getUserProfile,
@@ -26,6 +27,7 @@ export {
 export {
   embed,
   extractStructured,
+  extractMemoryItems,
   summarizeMemories,
   buildPrompt,
   buildMemoryContext,

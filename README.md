@@ -78,6 +78,16 @@ New evidence for that key supersedes the previous value while preserving its sou
 
 Memories can carry `source_kind`, `source_ref`, `confidence`, `valid_from`, `valid_until`, and an explicit/inferred evidence status. Every recalled memory includes the semantic, lexical, importance, and confidence signals that caused its selection.
 
+One interaction can produce multiple atomic memories. Each extracted claim receives its own type, stable key, confidence, provenance, embedding, and lifecycle, so changing an editor preference does not disturb a home-city fact learned in the same conversation.
+
+## Memory quality benchmark
+
+```bash
+npm run benchmark
+```
+
+The deterministic benchmark executes the real storage and recall APIs without paid model calls. Its versioned fixtures currently measure temporal accuracy, unresolved-conflict safety, namespace isolation, user retraction, explainability, and atomic multi-fact extraction. A regression exits non-zero and reports the exact failed check.
+
 ## Local dashboard
 
 ```bash
@@ -91,6 +101,7 @@ The dashboard listens on `http://localhost:4444` by default.
 ```bash
 npm install
 npm test
+npm run benchmark
 npm run pack:check
 ```
 

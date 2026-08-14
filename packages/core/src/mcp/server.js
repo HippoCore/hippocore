@@ -110,7 +110,7 @@ const TOOLS = [
 
 async function handleToolCall(id, toolName, args) {
   const config = loadConfig();
-  const { addMemory, queryMemories, getMetrics, getMemoryHistory, resolveConflict, retractMemory } = await import('../services/memory.js');
+  const { addMemory, addMemories, queryMemories, getMetrics, getMemoryHistory, resolveConflict, retractMemory } = await import('../services/memory.js');
   const { buildMemoryContext } = await import('../services/ai.js');
   const { getDb, saveDb } = await import('../db/sqlite.js');
   const { v4: uuidv4 } = await import('uuid');
@@ -158,7 +158,9 @@ async function handleToolCall(id, toolName, args) {
       const { content, user_id = 'default', agent_id, org_id, type = 'long_term', ...trust } = args;
       if (!content) return replyError(id, -32602, 'content is required');
 
-      const memory = await addMemory({ user_id, agent_id, org_id, type, content, ...trust }, config);
+      const memory = trust.memory_key
+        ? await addMemory({ user_id, agent_id, org_id, type, content, ...trust }, config)
+        : await addMemories({ user_id, agent_id, org_id, type, content, ...trust }, config);
       const retrieval_ms = Date.now() - t0;
 
       // Log to request_log
@@ -172,9 +174,10 @@ async function handleToolCall(id, toolName, args) {
         saveDb();
       } catch {}
 
+      const stored = memory.memories || (memory.id ? [memory] : []);
       const message = memory.skipped
         ? `Skipped memory: ${memory.reason}`
-        : `✓ Stored memory ${memory.id}${memory.memory_key ? ` (${memory.memory_key})` : ''}: "${content.slice(0, 100)}${content.length > 100 ? '...' : ''}"`;
+        : `✓ Stored ${stored.length} atomic ${stored.length === 1 ? 'memory' : 'memories'}${stored.map(item => item.memory_key).filter(Boolean).length ? ` (${stored.map(item => item.memory_key).filter(Boolean).join(', ')})` : ''}`;
       return reply(id, { content: [{ type: 'text', text: message }] });
     }
 
