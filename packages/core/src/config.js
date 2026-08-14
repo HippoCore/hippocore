@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';
 
 export function getHippoHome(env = process.env) {
   return resolve(env.HIPPO_CORE_HOME || join(homedir(), '.hippo-core'));

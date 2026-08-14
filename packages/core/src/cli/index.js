@@ -8,6 +8,7 @@ import { createInterface } from 'readline';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { getConfigPath, getDefaultDbPath, getHippoHome, loadConfig, publicConfig } from '../config.js';
+import { install, supportedClients } from './onboarding.js';
 
 const CONFIG_PATH = getConfigPath();
 const DB_PATH     = getDefaultDbPath();
@@ -485,10 +486,61 @@ async function runDashboard() {
   console.log(gray('  Press Ctrl+C to stop.'));
 }
 
+// One-command local vault initialization and MCP client wiring.
+async function runInstall() {
+  const args = process.argv.slice(3);
+  const dryRun = args.includes('--dry-run');
+  const requested = [];
+  for (let index = 0; index < args.length; index++) {
+    if (args[index] === '--client' && args[index + 1]) {
+      requested.push(...args[++index].split(',').map(value => value.trim()).filter(Boolean));
+    }
+  }
+  const clients = requested.includes('all') ? supportedClients() : requested;
+  const result = await install({ clients, dryRun });
+
+  console.log('');
+  console.log(bold('Hippo Core - effortless agent setup'));
+  console.log(gray('--------------------------------------------------'));
+  console.log(`  [ok] Shared vault ${dryRun ? gray('(preview only)') : green('ready')}`);
+  console.log(`    ${gray(result.dbPath)}`);
+  console.log('');
+
+  if (!result.clients.length) {
+    console.log(`  ${yellow('!')} No supported agent installation was detected.`);
+    console.log(`    Choose one explicitly: ${cyan('hippo-core install --client codex')}`);
+    console.log(`    Supported: ${supportedClients().join(', ')}`);
+  } else {
+    for (const client of result.clients) {
+      const state = client.changed
+        ? (dryRun ? yellow('would configure') : green('configured'))
+        : gray('already configured');
+      console.log(`  [ok] ${client.label.padEnd(14)} ${state}`);
+      console.log(`    ${gray(client.path)}`);
+      if (client.note) console.log(`    ${yellow(client.note)}`);
+      if (client.backupPath) console.log(`    ${gray(`backup: ${client.backupPath}`)}`);
+    }
+  }
+
+  console.log('');
+  if (dryRun) {
+    console.log(`  Preview complete. Run again without ${cyan('--dry-run')} to apply.`);
+  } else {
+    console.log(`  ${green('Hippo Core is connected.')}`);
+    console.log('  Restart configured agents, then ask them to call hippo_status.');
+    console.log('');
+    console.log('  For semantic recall, set HIPPO_CORE_API_KEY (or run hippo-core setup');
+    console.log('  to choose another OpenAI-compatible or local provider).');
+  }
+  console.log('');
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 const command = process.argv[2];
 
-if (command === 'setup') {
+if (command === 'install') {
+  runInstall().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 'setup') {
   runSetup().catch(err => { console.error(red(err.message)); process.exit(1); });
 } else if (command === 'status') {
   runStatus().catch(err => { console.error(red(err.message)); process.exit(1); });
@@ -503,6 +555,7 @@ if (command === 'setup') {
   console.log(bold('🦛 Hippo Core'));
   console.log('');
   console.log('  Commands:');
+  console.log(`  ${cyan('npx @hippo-core/core install')}    - connect Hippo Core to detected AI agents`);
   console.log(`  ${cyan('npx @hippo-core/core setup')}      — first-time setup and connection test`);
   console.log(`  ${cyan('npx @hippo-core/core status')}     — check if everything is running`);
   console.log(`  ${cyan('npx @hippo-core/core dashboard')}   — open developer monitoring dashboard`);
