@@ -6,12 +6,24 @@
 
 import { createInterface } from 'readline';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'path';
 import { getConfigPath, getDefaultDbPath, getHippoHome, loadConfig, publicConfig } from '../config.js';
-import { install, supportedClients } from './onboarding.js';
+import { install, uninstall, supportedClients } from './onboarding.js';
+import { dashboardStatus, startDashboardBackground, stopDashboardBackground } from '../dashboard/lifecycle.js';
+import { installDashboardAutostart, uninstallDashboardAutostart } from '../dashboard/autostart.js';
 
 const CONFIG_PATH = getConfigPath();
 const DB_PATH     = getDefaultDbPath();
+
+function dashboardUrl() {
+  let stored = {};
+  if (existsSync(CONFIG_PATH)) {
+    try { stored = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')); } catch {}
+  }
+  const port = process.env.HIPPO_DASHBOARD_PORT || stored.dashboardPort || 4444;
+  return `http://localhost:${port}`;
+}
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const c = {
@@ -498,6 +510,8 @@ async function runInstall() {
   }
   const clients = requested.includes('all') ? supportedClients() : requested;
   const result = await install({ clients, dryRun });
+  const dashboard = dryRun ? { running: false, changed: false } : startDashboardBackground();
+  const autostart = installDashboardAutostart({ dryRun });
 
   console.log('');
   console.log(bold('Hippo Core - effortless agent setup'));
@@ -533,12 +547,57 @@ async function runInstall() {
     console.log(`  Preview complete. Run again without ${cyan('--dry-run')} to apply.`);
   } else {
     console.log(`  ${green('Hippo Core is connected with ambient memory enabled.')}`);
+    console.log(`  Dashboard: ${dashboardUrl()} ${gray(`(background PID ${dashboard.pid})`)}`);
+    console.log(`  Login startup: ${gray(autostart.path)}`);
     console.log('  Restart configured agents. Recall and remember now happen automatically.');
     console.log('');
     console.log('  For semantic recall, set HIPPO_CORE_API_KEY (or run hippo-core setup');
     console.log('  to choose another OpenAI-compatible or local provider).');
   }
   console.log('');
+}
+
+async function runUninstall() {
+  const args = process.argv.slice(3);
+  const dryRun = args.includes('--dry-run');
+  const requested = [];
+  for (let index = 0; index < args.length; index++) {
+    if (args[index] === '--client' && args[index + 1]) {
+      requested.push(...args[++index].split(',').map(value => value.trim()).filter(Boolean));
+    }
+  }
+  const clients = requested.includes('all') ? supportedClients() : requested;
+  const result = uninstall({ clients, dryRun });
+  if (!dryRun) stopDashboardBackground();
+  uninstallDashboardAutostart({ dryRun });
+  header('Uninstall');
+  for (const client of result.clients) {
+    console.log(`  ${client.changed || client.ambient.changed ? tick : arrow} ${client.label} disconnected`);
+  }
+  console.log(`\n  ${green('Memory vault preserved.')} Reinstall anytime without losing history.\n`);
+}
+
+async function runDashboardControl() {
+  const action = process.argv[3] || 'foreground';
+  if (action === 'start') {
+    const result = startDashboardBackground();
+    console.log(`Dashboard ${result.changed ? 'started' : 'already running'} at ${dashboardUrl()} (PID ${result.pid})`);
+  } else if (action === 'stop') {
+    const result = stopDashboardBackground();
+    console.log(result.changed ? 'Dashboard stopped.' : 'Dashboard is not running.');
+  } else if (action === 'status') {
+    const result = dashboardStatus();
+    console.log(result.running ? `Dashboard running at ${dashboardUrl()} (PID ${result.pid})` : 'Dashboard is not running.');
+  } else {
+    await runDashboard();
+  }
+}
+
+function runUpdate() {
+  const executable = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const result = spawnSync(executable, ['-y', '@hippo-core/core@latest', 'repair'], { stdio: 'inherit' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`Update failed with exit code ${result.status}`);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -555,7 +614,13 @@ if (command === 'install') {
 } else if (command === 'mcp') {
   runMcp().catch(() => process.exit(1));
 } else if (command === 'dashboard') {
-  runDashboard().catch(err => { console.error(red(err.message)); process.exit(1); });
+  runDashboardControl().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 'repair') {
+  runInstall().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 'uninstall') {
+  runUninstall().catch(err => { console.error(red(err.message)); process.exit(1); });
+} else if (command === 'update') {
+  try { runUpdate(); } catch (err) { console.error(red(err.message)); process.exit(1); }
 } else {
   console.log('');
   console.log(bold('🦛 Hippo Core'));
@@ -565,6 +630,10 @@ if (command === 'install') {
   console.log(`  ${cyan('npx @hippo-core/core setup')}      — first-time setup and connection test`);
   console.log(`  ${cyan('npx @hippo-core/core status')}     — check if everything is running`);
   console.log(`  ${cyan('npx @hippo-core/core dashboard')}   — open developer monitoring dashboard`);
+  console.log(`  ${cyan('npx @hippo-core/core dashboard start|stop|status')} - manage the background dashboard`);
+  console.log(`  ${cyan('npx @hippo-core/core repair')}     - safely restore agent connections`);
+  console.log(`  ${cyan('npx @hippo-core/core update')}     - install and repair with the latest release`);
+  console.log(`  ${cyan('npx @hippo-core/core uninstall')}  - disconnect agents and preserve the vault`);
   console.log(`  ${cyan('npx @hippo-core/core re-embed')}   — migrate embeddings after changing model`);
   console.log(`  ${cyan('npx @hippo-core/core mcp')}          — start MCP server (for OpenClaw, Paperclip, Hermes)`);
   console.log('');

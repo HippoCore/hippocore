@@ -24,6 +24,9 @@ are preserved and changed files receive a `.hippo-backup` copy. Restart the
 configured agents; they will recall relevant context before meaningful work and
 save durable outcomes afterward without being prompted.
 
+The installer also starts the local dashboard in the background and registers
+it for user-level login startup. No administrator privileges are required.
+
 ## Ambient memory
 
 Installation adds a managed global instruction block for Codex and Claude Code
@@ -41,6 +44,17 @@ Preview without changing anything, or select clients explicitly:
 npx -y @hippo-core/core install --dry-run
 npx -y @hippo-core/core install --client codex,claude-code,cursor
 ```
+
+Repair managed configuration or disconnect every managed integration safely:
+
+```bash
+hippo-core repair
+hippo-core update
+hippo-core uninstall
+```
+
+Uninstall preserves `~/.hippo-core/memory.db` so reinstalling does not erase
+history. Existing unmanaged agent settings are never removed.
 
 The vault works immediately without an account or provider key using private,
 deterministic local embeddings and conservative single-memory extraction.
@@ -138,6 +152,9 @@ The test launches two live MCP servers and a local mock model provider. Agent B 
 
 ```bash
 hippo-core dashboard
+hippo-core dashboard status
+hippo-core dashboard stop
+hippo-core dashboard start
 ```
 
 The dashboard listens on `http://localhost:4444` by default.
@@ -148,6 +165,10 @@ injected. It reports the estimated tokens avoided and context-reduction
 percentage globally and for each recent recall. The counterfactual is
 snapshotted when recall happens and is explicitly labeled as a context estimate,
 not an exact provider bill.
+
+## Support and security
+
+Use [GitHub Issues](https://github.com/HippoCore/hippocore/issues) for reproducible bugs. See [SECURITY.md](SECURITY.md) for private vulnerability reporting and [CONTRIBUTING.md](CONTRIBUTING.md) for development guidance. Release history is maintained in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 

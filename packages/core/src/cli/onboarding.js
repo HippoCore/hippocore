@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { VERSION, getHippoHome, getConfigPath, getDefaultDbPath, publicConfig } from '../config.js';
 import { getDb, closeDb } from '../db/sqlite.js';
-import { installAmbientPolicy } from './ambient.js';
+import { installAmbientPolicy, uninstallAmbientPolicy } from './ambient.js';
 
 const JSON_CLIENTS = {
   'claude-code': {
@@ -159,4 +159,51 @@ export async function install(options = {}) {
   }
 
   return { hippoHome, configPath, dbPath, dryRun, detected: detectClients(home), clients: results };
+}
+
+function uninstallJsonClient(id, options) {
+  const client = JSON_CLIENTS[id];
+  const path = client.path(options.home);
+  const config = parseJsonFile(path);
+  const managed = config.mcpServers?.['hippo-core'];
+  const expected = launcher();
+  const ownsEntry = managed?.command === expected.command
+    && JSON.stringify(managed?.args) === JSON.stringify(expected.args);
+  if (ownsEntry) {
+    delete config.mcpServers['hippo-core'];
+    if (!Object.keys(config.mcpServers).length) delete config.mcpServers;
+  }
+  if (ownsEntry && !options.dryRun) {
+    backup(path, false);
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  }
+  return { id, label: client.label, path, changed: ownsEntry, ambient: uninstallAmbientPolicy(id, options) };
+}
+
+function uninstallCodex(options) {
+  const path = codexPath(options.home);
+  const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+  const pattern = new RegExp(`${CODEX_START}[\\s\\S]*?${CODEX_END}\\s*`, 'g');
+  const next = current.replace(pattern, '').trimEnd();
+  const output = next ? `${next}\n` : '';
+  const changed = current !== output;
+  if (changed && !options.dryRun) {
+    backup(path, false);
+    writeFileSync(path, output, { mode: 0o600 });
+  }
+  return { id: 'codex', label: 'Codex', path, changed, ambient: uninstallAmbientPolicy('codex', options) };
+}
+
+export function uninstall(options = {}) {
+  const home = options.home || homedir();
+  const dryRun = Boolean(options.dryRun);
+  const requested = options.clients?.length ? options.clients : detectClients(home);
+  const clients = [...new Set(requested)];
+  const invalid = clients.filter(id => !supportedClients().includes(id));
+  if (invalid.length) throw new Error(`Unsupported client: ${invalid.join(', ')}`);
+  const writeOptions = { home, dryRun };
+  const results = clients.map(id => id === 'codex'
+    ? uninstallCodex(writeOptions)
+    : uninstallJsonClient(id, writeOptions));
+  return { dryRun, clients: results, vaultPreserved: true };
 }
