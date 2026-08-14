@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish
+        required: true
+        default: v1.3.0
 
 permissions:
   contents: write
@@ -13,21 +19,24 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
+      - run: npm install --global npm@latest
       - run: npm ci
       - name: Verify tag matches package version
-        run: node -e "const v=require('./packages/core/package.json').version;if(process.env.GITHUB_REF_NAME!=='v'+v)throw new Error('Tag must be v'+v)"
+        run: node -e "const v=require('./packages/core/package.json').version;if(process.env.RELEASE_TAG!=='v'+v)throw new Error('Tag must be v'+v)"
       - run: npm test
       - run: npm run benchmark
       - run: npm publish --workspace @hippo-core/core --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+      - run: gh release create "$RELEASE_TAG" --generate-notes --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
