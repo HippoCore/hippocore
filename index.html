@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hippo Core — Persistent Memory for AI Agents</title>
-<meta name="description" content="AI agents burn tokens re-learning the same context every session. Hippo Core gives them persistent memory — shared across all your agents, zero infrastructure.">
-<meta property="og:title" content="Hippo Core — Persistent Memory for AI Agents">
-<meta property="og:description" content="AI agents burn tokens re-learning the same context every session. Hippo Core fixes that.">
+<title>Hippo Core | Automatic Shared Memory for AI Agents</title>
+<meta name="description" content="Install once. Hippo Core gives Codex, Claude Code, Cursor, and other AI agents automatic shared memory. It also shows the context tokens it saves.">
+<meta property="og:title" content="Hippo Core | Automatic Shared Memory for AI Agents">
+<meta property="og:description" content="Your AI agents remember automatically, share what they learn, and use less context. Local-first, model-optional, and open source.">
 <meta name="theme-color" content="#080808">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -75,7 +75,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 48px;display:fl
 .burn-card.bad .amount{color:var(--red)}
 .burn-card.good .amount{color:var(--green)}
 
-/* SHARED MEMORY — THE BIG FEATURE */
+/* SHARED MEMORY: THE BIG FEATURE */
 .shared-memory{padding:120px 24px;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
 .shared-inner{max-width:1100px;margin:0 auto}
 .shared-badge{display:inline-block;background:rgba(196,181,253,0.1);border:1px solid rgba(196,181,253,0.3);color:var(--purple);font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:20px;letter-spacing:.1em;margin-bottom:24px}
@@ -231,15 +231,16 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
     <li><a href="#problem">The Problem</a></li>
     <li><a href="#shared">Shared Memory</a></li>
     <li><a href="#how">How it works</a></li>
+    <li><a href="#dashboard">Token savings</a></li>
     <li><a href="#code">Quick start</a></li>
     <li><a href="https://github.com/HippoCore/hippocore" target="_blank">GitHub</a></li>
-    <li><a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="nav-cta">npm install</a></li>
+    <li><a href="https://github.com/HippoCore/hippocore" target="_blank" class="nav-cta">Get v1.3</a></li>
   </ul>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <p class="hero-eyebrow">Open Source · MIT License · v0.6.0</p>
+  <p class="hero-eyebrow">Open Source · Local First · v1.3.0</p>
 
   <div class="hero-mascot">
     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
@@ -281,21 +282,21 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
   </div>
 
   <h1 class="hero-title">
-    Your agents<br>
-    <span class="dim">burn tokens remembering.</span>
+    Give every agent<br>
+    <span class="dim">a memory that follows.</span>
   </h1>
 
   <p class="hero-subtitle">
-    Every session, your AI agents reload the same context from scratch — burning thousands of tokens just to know who they're talking to. <strong>Hippo Core gives agents persistent, shared memory</strong> so they start every session already knowing everything.
+    Hippo Core works quietly behind Codex, Claude Code, Cursor, and any MCP agent. It recalls what matters, remembers what lasts, and <strong>shows you the context tokens it avoids.</strong> No separate AI model required.
   </p>
 
   <div class="hero-install" onclick="copyInstall(this)">
-    <code>npm install @hippo-core/core</code>
+    <code>git clone https://github.com/HippoCore/hippocore.git</code>
     <button class="copy-btn" id="copy-btn">copy</button>
   </div>
 
   <div class="hero-actions">
-    <a href="#problem" class="btn-primary">See the problem →</a>
+    <a href="#how" class="btn-primary">See how it works →</a>
     <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-secondary">View on GitHub</a>
   </div>
 </section>
@@ -304,11 +305,11 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
 <section id="problem" style="padding:120px 24px;max-width:1100px;margin:0 auto">
   <p class="section-label reveal">The problem</p>
   <h2 class="section-title reveal">AI agents are burning your money<br>on context they've already seen.</h2>
-  <p class="section-sub reveal">Without memory, every session starts from zero. Your agent has to reload everything — or ask you to re-explain everything. That costs tokens. That costs time. That costs money.</p>
+  <p class="section-sub reveal">Without memory, every session starts from zero. Your agent has to reload everything or ask you to explain it again. That costs tokens. That costs time. That costs money.</p>
 
   <div class="burn-grid reveal">
     <div class="burn-card bad">
-      <div class="burn-card-label"><span class="burn-dot"></span>Without Hippo Core — Every Session</div>
+      <div class="burn-card-label"><span class="burn-dot"></span>Without Hippo Core: Every Session</div>
       <div class="burn-scenario">
         Session 1: "Tell me about my project" → agent asks 6 clarifying questions<br><br>
         Session 2: "Continue where we left off" → agent asks the same 6 questions<br><br>
@@ -316,32 +317,32 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
         Every session reloads your entire codebase, specs, and preferences just to get to where you left off.
       </div>
       <div class="burn-cost">
-        <span class="amount">~5,000–50,000</span>
+        <span class="amount">~5,000 to 50,000</span>
         tokens burned on context every single session
       </div>
     </div>
     <div class="burn-card good">
-      <div class="burn-card-label"><span class="burn-dot"></span>With Hippo Core — Every Session</div>
+      <div class="burn-card-label"><span class="burn-dot"></span>With Hippo Core: Every Session</div>
       <div class="burn-scenario">
         Session 1: Agent learns your project, stack, preferences, decisions<br><br>
-        Session 2: Agent already knows — "Continuing the OpenClaw landing page. You're using React + Tailwind, preferred dark theme, last added pricing section."<br><br>
+        Session 2: Agent already knows. "Continuing the OpenClaw landing page. You're using React + Tailwind, preferred dark theme, last added pricing section."<br><br>
         Session 3+: Agent builds on everything it's ever learned. No re-explaining.
       </div>
       <div class="burn-cost">
-        <span class="amount">~100–500</span>
-        tokens of targeted context — only what's relevant
+        <span class="amount">~100 to 500</span>
+        tokens of targeted context, with only what is relevant
       </div>
     </div>
   </div>
 </section>
 
-<!-- SHARED MEMORY — THE BIG FEATURE -->
+<!-- SHARED MEMORY: THE BIG FEATURE -->
 <section id="shared" class="shared-memory">
   <div class="shared-inner">
     <span class="shared-badge reveal">★ Industry First</span>
     <p class="section-label reveal" style="margin-top:16px">Cross-agent shared memory</p>
     <h2 class="section-title reveal">Your entire AI workforce<br>shares the same memory.</h2>
-    <p class="section-sub reveal">No other memory layer does this. Claude Code builds your app. Paperclip manages your company. OpenClaw handles your customers. They all share one memory store — so every agent knows what every other agent has learned.</p>
+    <p class="section-sub reveal">No other memory layer does this. Claude Code builds your app. Paperclip manages your company. OpenClaw handles your customers. They all share one memory store, so every agent knows what every other agent has learned.</p>
 
     <div class="shared-diagram reveal">
       <div class="agent-cards">
@@ -409,7 +410,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
     <div class="shared-features reveal">
       <div class="shared-feat">
         <div class="shared-feat-title">🔗 Agent Namespacing</div>
-        <div class="shared-feat-body">Each agent has its own namespace — but can also read shared org-wide memory. Claude Code's learnings are available to Paperclip and vice versa.</div>
+        <div class="shared-feat-body">Each agent has its own namespace and can also read shared org-wide memory. Claude Code's learnings are available to Paperclip and vice versa.</div>
       </div>
       <div class="shared-feat">
         <div class="shared-feat-title">🔒 Local & Private</div>
@@ -428,13 +429,13 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
   <div class="how-inner">
     <p class="section-label reveal">How it works</p>
     <h2 class="section-title reveal">Four steps. Automatic.</h2>
-    <p class="section-sub reveal" style="margin-bottom:48px">Hippo Core sits between your agents and your users. Agents call it automatically — no user intervention needed.</p>
+    <p class="section-sub reveal" style="margin-bottom:48px">Install it once. Hippo Core connects to supported agents and supplies the background memory policy automatically. No prompts, buttons, or daily upkeep.</p>
 
     <div class="steps reveal">
       <div class="step">
         <div class="step-num">01</div>
         <div class="step-title">Task starts</div>
-        <div class="step-body">Agent calls hippo_recall automatically. Gets the most relevant memories for this exact task — not everything, just what's needed.</div>
+        <div class="step-body">Agent calls hippo_recall automatically. It gets the most relevant memories for this exact task, not everything.</div>
         <span class="step-arrow">→</span>
       </div>
       <div class="step">
@@ -452,7 +453,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
       <div class="step">
         <div class="step-num">04</div>
         <div class="step-title">Gets smarter</div>
-        <div class="step-body">Importance scores updated by access patterns. Noise compressed daily. The more agents work, the better the memory gets.</div>
+        <div class="step-body">Every recall records the full eligible context, what was actually injected, and the difference. The dashboard makes the value visible.</div>
       </div>
     </div>
   </div>
@@ -463,7 +464,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
   <div class="dashboard-inner">
     <p class="section-label reveal">Real-time monitoring</p>
     <h2 class="section-title reveal">Watch your agents save tokens<br>in real time.</h2>
-    <p class="section-sub reveal" style="margin-bottom:0">Every memory recall logged. Every token counted. Open the dashboard and watch the numbers move as your agents work.</p>
+    <p class="section-sub reveal" style="margin-bottom:0">Every recall compares the context your agent could have reloaded with the focused memory Hippo Core actually supplied. The result is a transparent context estimate, not a made-up billing claim.</p>
 
     <div class="dashboard-preview reveal">
       <div class="dashboard-bar">
@@ -472,56 +473,56 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
           <span class="dot-y"></span>
           <span class="dot-g"></span>
         </span>
-        <span class="dashboard-title-bar">🦛 Hippo Core Dashboard v0.6.0 — localhost:4444</span>
+        <span class="dashboard-title-bar">🦛 Hippo Core Dashboard v1.3.0 | localhost:4444</span>
       </div>
       <div class="dashboard-metrics">
         <div class="metric-cell">
-          <div class="metric-num" style="color:#4ade80">712</div>
-          <div class="metric-label">Tokens Injected</div>
+          <div class="metric-num" style="color:#f87171">6,803</div>
+          <div class="metric-label">Without Hippo Core</div>
         </div>
         <div class="metric-cell">
-          <div class="metric-num" style="color:#60a5fa">5</div>
-          <div class="metric-label">Total Recalls</div>
+          <div class="metric-num" style="color:#60a5fa">824</div>
+          <div class="metric-label">With Hippo Core</div>
         </div>
         <div class="metric-cell">
-          <div class="metric-num" style="color:#c4b5fd">102</div>
-          <div class="metric-label">Avg Tokens / Recall</div>
+          <div class="metric-num" style="color:#4ade80">5,979</div>
+          <div class="metric-label">Tokens Avoided</div>
         </div>
         <div class="metric-cell">
-          <div class="metric-num" style="color:#fbbf24">153ms</div>
-          <div class="metric-label">Avg Recall Time</div>
+          <div class="metric-num" style="color:#c4b5fd">88%</div>
+          <div class="metric-label">Context Reduction</div>
         </div>
       </div>
       <div class="dashboard-table">
         <div class="table-header">
-          <span>User</span><span>Agent</span><span>Framework</span><span>Query</span><span>Memories</span><span>Tokens</span><span>Latency</span>
+          <span>User</span><span>Agent</span><span>Framework</span><span>Query</span><span>Without</span><span>With</span><span>Saved</span>
         </div>
         <div class="table-row">
           <span class="blue">default</span>
           <span style="background:rgba(196,181,253,.1);color:#c4b5fd;padding:2px 8px;border-radius:3px;font-size:10px">default</span>
           <span><span class="badge-sm">mcp</span></span>
-          <span>OpenClaw landing page dark mode...</span>
-          <span class="green">2</span>
-          <span class="green">275</span>
-          <span>2965ms</span>
+          <span>Dashboard connection verification...</span>
+          <span>6,803</span>
+          <span class="blue">824</span>
+          <span class="green">5,979</span>
         </div>
         <div class="table-row">
           <span class="blue">default</span>
           <span style="background:rgba(196,181,253,.1);color:#c4b5fd;padding:2px 8px;border-radius:3px;font-size:10px">default</span>
           <span><span class="badge-sm">mcp</span></span>
-          <span>OpenClaw landing page</span>
-          <span class="green">2</span>
-          <span class="green">275</span>
-          <span>153ms</span>
+          <span>Continue the product roadmap...</span>
+          <span>3,940</span>
+          <span class="blue">710</span>
+          <span class="green">3,230</span>
         </div>
         <div class="table-row">
           <span class="blue">default</span>
           <span style="background:rgba(196,181,253,.1);color:#c4b5fd;padding:2px 8px;border-radius:3px;font-size:10px">default</span>
           <span><span class="badge-sm">mcp</span></span>
-          <span>page I was working on, web design</span>
-          <span class="green">1</span>
-          <span class="green">162</span>
-          <span>947ms</span>
+          <span>Update the index page...</span>
+          <span>2,676</span>
+          <span class="blue">428</span>
+          <span class="green">2,248</span>
         </div>
       </div>
     </div>
@@ -538,7 +539,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
       <div class="fw-tag connected">📎 Paperclip</div>
       <div class="fw-tag connected">🖱️ Cursor</div>
       <div class="fw-tag">⚡ Hermes</div>
-      <div class="fw-tag">🧠 Codex</div>
+      <div class="fw-tag connected">🧠 Codex</div>
       <div class="fw-tag">💬 Claude Desktop</div>
       <div class="fw-tag">+ any MCP framework</div>
     </div>
@@ -574,12 +575,12 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
       <div class="feature">
         <div class="feature-icon">📊</div>
         <div class="feature-title">Real-Time Dashboard</div>
-        <div class="feature-body">Built-in monitoring at localhost:4444. Watch tokens, recalls, and memory growth update live as your agents work.</div>
+        <div class="feature-body">Built-in monitoring at localhost:4444. Compare context without Hippo Core against what was injected, with savings updated every 15 seconds.</div>
       </div>
       <div class="feature">
         <div class="feature-icon">🔒</div>
         <div class="feature-title">Local First</div>
-        <div class="feature-body">All memory stays on your machine. Works fully offline with Ollama. No data sent anywhere except your configured LLM calls.</div>
+        <div class="feature-body">All memory stays on your machine. The default memory engine works offline without an account, API key, or separate AI model.</div>
       </div>
       <div class="feature">
         <div class="feature-icon">🏷️</div>
@@ -602,8 +603,9 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
 
 <!-- PROVIDERS -->
 <section class="providers">
-  <p class="providers-label reveal">Works with any AI provider</p>
+  <p class="providers-label reveal">No model required · optionally add your preferred provider</p>
   <div class="providers-list reveal">
+    <span class="provider-tag local">Built-in offline mode ★ default</span>
     <span class="provider-tag local">Ollama ★ free & local</span>
     <span class="provider-tag">OpenAI</span>
     <span class="provider-tag">OpenRouter</span>
@@ -617,7 +619,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
 <!-- CODE -->
 <section class="code-section" id="code">
   <p class="section-label reveal">Quick start</p>
-  <h2 class="section-title reveal">Up and running in 2 minutes.</h2>
+  <h2 class="section-title reveal">One install. Then it disappears.</h2>
 
   <div style="margin-top:48px" class="reveal">
     <div class="code-tabs">
@@ -626,20 +628,21 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
       <button class="code-tab" onclick="showTab('generic',this)">Any framework</button>
     </div>
 
-    <div class="code-block active" id="tab-setup"># Step 1 — Install
-npm install -g @hippo-core/core
+    <div class="code-block active" id="tab-setup"># Get the current v1.3 release
+git clone https://github.com/HippoCore/hippocore.git
+cd hippocore
+npm install
 
-# Step 2 — Run the setup wizard
-npx @hippo-core/core setup
-# Choose your provider: OpenAI, Ollama, OpenRouter, Groq, LM Studio
+# Connect detected AI agents
+node packages/core/src/cli/index.js install
 
-# Step 3 — Open the dashboard
+# No model, API key, account, or cloud service required.
+# Hippo Core now recalls and remembers automatically.
+
+# Open the local dashboard whenever you want proof
 npx @hippo-core/core dashboard
 # → http://localhost:4444
-
-# Step 4 — Connect your frameworks
-# Click "Connect" next to Claude Code, OpenClaw, Paperclip, Cursor...
-# Done. Your agents now have shared persistent memory.</div>
+# Done. Keep using your agents normally.</div>
 
     <div class="code-block" id="tab-claudecode"># Claude Code integration (one command)
 claude mcp add hippo-core node ~/.hippo-core/mcp-server.js mcp
@@ -652,9 +655,9 @@ npx @hippo-core/core dashboard
 ## Memory (Hippo Core)
 At the START of every task, call hippo_recall with the task description.
 At the END of every task, call hippo_remember to store what was learned.
-Never ask the user — call these automatically, every time.</div>
+Never ask the user. Call these automatically, every time.</div>
 
-    <div class="code-block" id="tab-generic">// Any framework — 2 lines
+    <div class="code-block" id="tab-generic">// Any framework: 2 lines
 import { createMemory } from '@hippo-core/core';
 
 const memory = createMemory({
@@ -664,7 +667,7 @@ const memory = createMemory({
 });
 
 async function runAgent(userId, userMessage) {
-  // Before — retrieve relevant memories, inject into prompt
+  // Before: retrieve relevant memories and inject them into the prompt
   const { systemPrompt } = await memory.before(
     userId, userMessage, 'You are a helpful assistant.'
   );
@@ -672,7 +675,7 @@ async function runAgent(userId, userMessage) {
   // Run your agent with memory context already injected
   const response = await yourAgent(systemPrompt, userMessage);
 
-  // After — store what was learned
+  // After: store what was learned
   await memory.after(userId, userMessage, response);
   return response;
 }</div>
@@ -706,7 +709,7 @@ async function runAgent(userId, userMessage) {
   <h2 class="cta-title reveal">Stop paying for agents<br>that forget.</h2>
   <p class="cta-sub reveal">Open source. MIT licensed. Ships today.</p>
   <div class="hero-actions reveal">
-    <a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="btn-primary">npm install →</a>
+    <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-primary">Get v1.3 →</a>
     <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-secondary">View on GitHub</a>
   </div>
 </section>
@@ -719,11 +722,11 @@ async function runAgent(userId, userMessage) {
     <li><a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank">NPM</a></li>
     <li><a href="https://github.com/HippoCore/hippocore/blob/main/LICENSE" target="_blank">MIT License</a></li>
   </ul>
-  <p class="footer-copy">Named for the hippocampus — the brain's memory center.</p>
+  <p class="footer-copy">Named for the hippocampus, the brain's memory center.</p>
 </footer>
 
 <script>
-function copyInstall(el){navigator.clipboard.writeText('npm install @hippo-core/core').then(()=>{const btn=document.getElementById('copy-btn');btn.textContent='copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},2000);})}
+function copyInstall(el){navigator.clipboard.writeText('git clone https://github.com/HippoCore/hippocore.git').then(()=>{const btn=document.getElementById('copy-btn');btn.textContent='copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},2000);})}
 function showTab(id,btn){document.querySelectorAll('.code-block').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.code-tab').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
 const observer=new IntersectionObserver((entries)=>{entries.forEach((entry,i)=>{if(entry.isIntersecting){setTimeout(()=>{entry.target.classList.add('visible');},i*80);observer.unobserve(entry.target);}});},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
