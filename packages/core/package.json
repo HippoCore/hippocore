@@ -2,6 +2,15 @@
   "name": "@hippo-core/core",
   "version": "1.3.0",
   "description": "Private local memory shared by MCP-compatible AI agents",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HippoCore/hippocore.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/HippoCore/hippocore#readme",
+  "bugs": {
+    "url": "https://github.com/HippoCore/hippocore/issues"
+  },
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -29,6 +38,10 @@
   ],
   "engines": {
     "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "keywords": [
     "ai",

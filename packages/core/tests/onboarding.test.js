@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { detectClients, install } from '../src/cli/onboarding.js';
+import { detectClients, install, uninstall } from '../src/cli/onboarding.js';
 
 function tempHome() {
   return mkdtempSync(join(tmpdir(), 'hippo-onboarding-'));
@@ -100,5 +100,28 @@ test('preserves an unmanaged existing Codex hippo-core entry without duplication
     assert.equal(readFileSync(path, 'utf8'), existing);
     assert.match(result.clients[0].note, /preserved/);
     assert.equal(existsSync(`${path}.hippo-backup`), false);
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test('uninstall removes only managed connections and preserves the vault', async () => {
+  const home = tempHome();
+  const hippoHome = join(home, 'hippo');
+  try {
+    mkdirSync(join(home, '.codex'));
+    writeFileSync(join(home, '.codex', 'config.toml'), 'model = "gpt-5"\n');
+    writeFileSync(join(home, '.claude.json'), JSON.stringify({ theme: 'dark' }));
+    await install({ home, env: { HIPPO_CORE_HOME: hippoHome }, clients: ['codex', 'claude-code'] });
+    const vault = join(hippoHome, 'memory.db');
+    assert.ok(existsSync(vault));
+
+    const result = uninstall({ home, clients: ['codex', 'claude-code'] });
+    assert.equal(result.vaultPreserved, true);
+    assert.ok(existsSync(vault));
+    assert.doesNotMatch(readFileSync(join(home, '.codex', 'config.toml'), 'utf8'), /hippo-core managed/);
+    assert.match(readFileSync(join(home, '.codex', 'config.toml'), 'utf8'), /model = "gpt-5"/);
+    const claude = JSON.parse(readFileSync(join(home, '.claude.json'), 'utf8'));
+    assert.equal(claude.theme, 'dark');
+    assert.equal(claude.mcpServers, undefined);
+    assert.doesNotMatch(readFileSync(join(home, '.codex', 'AGENTS.md'), 'utf8'), /hippo-core ambient/);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });

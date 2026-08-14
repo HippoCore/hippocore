@@ -11,6 +11,12 @@ Codex, Claude Code, and Cursor installations. Use `--dry-run` to preview or
 `--client codex,claude-code,cursor` to choose explicit targets. Existing client
 settings are preserved and modified files receive a `.hippo-backup` copy.
 
+Installation starts the dashboard in the background and registers it for
+user-level login startup on Windows, macOS, and Linux. Use `hippo-core repair`
+to restore managed configuration, `hippo-core update` to move to the latest
+release, or `hippo-core uninstall` to disconnect
+agents and stop the dashboard. Uninstall preserves the memory vault.
+
 The installer also enables ambient memory. Codex, Claude Code, and Cursor recall
 context before meaningful work and save durable outcomes afterward without user
 prompts. Managed instruction blocks preserve existing rules and explicitly skip
@@ -35,6 +41,9 @@ Run `hippo-core dashboard` to see the estimated accumulated context without
 Hippo Core versus the targeted context actually injected. The dashboard shows
 tokens avoided and context reduction globally and for each recent recall. This
 is a conservative context estimate, clearly distinguished from provider billing.
+
+Use `hippo-core dashboard start`, `stop`, or `status` to manage the background
+process explicitly.
 
 Stable `memory_key` values let new evidence supersede old evidence without deleting history. Provenance, confidence, temporal validity, lifecycle status, relations, and audit events remain inspectable, while normal recall returns only active evidence.
 

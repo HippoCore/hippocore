@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, copyFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 export const AMBIENT_START = '<!-- >>> hippo-core ambient memory >>> -->';
@@ -59,4 +59,21 @@ export function installAmbientPolicy(client, options) {
     writeFileSync(path, next, { mode: 0o600 });
   }
   return { path, changed, backupPath };
+}
+
+export function uninstallAmbientPolicy(client, options) {
+  const path = instructionTarget(client, options.home);
+  if (!existsSync(path)) return { path, changed: false, backupPath: null };
+  const current = readFileSync(path, 'utf8');
+  if (client === 'cursor') {
+    if (!current.includes(AMBIENT_START)) return { path, changed: false, backupPath: null };
+    if (!options.dryRun) rmSync(path, { force: true });
+    return { path, changed: true, backupPath: null };
+  }
+  const pattern = new RegExp(`${AMBIENT_START}[\\s\\S]*?${AMBIENT_END}\\s*`, 'g');
+  const next = current.replace(pattern, '').trimEnd();
+  const output = next ? `${next}\n` : '';
+  const changed = current !== output;
+  if (changed && !options.dryRun) writeFileSync(path, output, { mode: 0o600 });
+  return { path, changed, backupPath: null };
 }
