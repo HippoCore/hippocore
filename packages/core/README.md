@@ -3,9 +3,13 @@
 Private local memory shared by MCP-compatible AI agents.
 
 ```bash
-npm install -g @hippo-core/core
-hippo-core setup
+npx -y @hippo-core/core install
 ```
+
+The installer creates the shared SQLite vault and safely configures detected
+Codex, Claude Code, and Cursor installations. Use `--dry-run` to preview or
+`--client codex,claude-code,cursor` to choose explicit targets. Existing client
+settings are preserved and modified files receive a `.hippo-backup` copy.
 
 Hippo Core stores durable facts, preferences, decisions, and interaction outcomes in `~/.hippo-core/memory.db`. Its MCP server makes that context available to Codex, Claude Code, Cursor, OpenClaw, and other clients without a hosted database or Hippo Core cloud account.
 

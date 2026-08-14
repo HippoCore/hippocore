@@ -15,9 +15,29 @@ Hippo Core gives Codex, Claude Code, Cursor, OpenClaw, and other MCP-compatible 
 ## Install and configure
 
 ```bash
-npm install -g @hippo-core/core
-hippo-core setup
+npx -y @hippo-core/core install
 ```
+
+That one command creates the local vault, detects Codex, Claude Code, and Cursor,
+and safely adds Hippo Core to each detected MCP configuration. Existing settings
+are preserved and changed files receive a `.hippo-backup` copy. Restart the
+configured agents, then ask one to call `hippo_status`.
+
+Preview without changing anything, or select clients explicitly:
+
+```bash
+npx -y @hippo-core/core install --dry-run
+npx -y @hippo-core/core install --client codex,claude-code,cursor
+```
+
+The vault works immediately. Semantic extraction and recall require an
+OpenAI-compatible or local model provider. The simplest hosted setup is:
+
+```bash
+export HIPPO_CORE_API_KEY="your-key"
+```
+
+Use `hippo-core setup` for other providers and local models.
 
 Configuration is stored at `~/.hippo-core/config.json`. API keys are not written there; supply them through the environment:
 
