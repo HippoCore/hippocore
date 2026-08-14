@@ -1,7 +1,7 @@
 {
   "name": "@hippo-core/core",
-  "version": "0.6.2",
-  "description": "Drop-in persistent memory for any AI agent framework",
+  "version": "0.7.0",
+  "description": "Private local memory shared by MCP-compatible AI agents",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -17,8 +17,10 @@
     "./mcp": "./src/mcp/server.js"
   },
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js"
   },
+  "files": ["src", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
   "keywords": [
     "ai",
     "agents",
@@ -39,7 +41,7 @@
   "dependencies": {
     "sql.js": "^1.12.0",
     "openai": "^4.20.0",
-    "uuid": "^9.0.0"
+    "uuid": "^11.1.1"
   },
   "peerDependencies": {
     "openai": ">=4.0.0"

@@ -45,6 +45,19 @@ function cosineSimilarity(a, b) {
   return denom === 0 ? 0 : dot / denom;
 }
 
+function terms(text) {
+  return new Set((text || '').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
+}
+
+export function lexicalSimilarity(query, content) {
+  const q = terms(query);
+  const c = terms(content);
+  if (!q.size || !c.size) return 0;
+  let overlap = 0;
+  for (const token of q) if (c.has(token)) overlap++;
+  return overlap / q.size;
+}
+
 // Normalise namespace — all three fields always present
 function ns(params) {
   return {
@@ -60,6 +73,18 @@ export async function addMemory(params, config = {}) {
   const { type, content } = params;
   const db         = await getDb(config.dbPath);
   const memoryType = normalizeType(type);
+
+  const duplicate = [];
+  db.exec({
+    sql: `SELECT id, importance_score, created_at FROM memories
+          WHERE user_id = ? AND agent_id = ? AND org_id = ? AND type = ? AND content = ? LIMIT 1`,
+    bind: [user_id, agent_id, org_id, memoryType, content.trim()],
+    callback: row => duplicate.push(row),
+  });
+  if (duplicate.length) {
+    return { id: duplicate[0][0], user_id, agent_id, org_id, type: memoryType,
+      importance_score: duplicate[0][1], created_at: duplicate[0][2], duplicate: true };
+  }
   const id         = uuidv4();
   const structId   = uuidv4();
 
@@ -78,7 +103,7 @@ export async function addMemory(params, config = {}) {
     sql: `INSERT INTO memories
             (id, user_id, agent_id, org_id, content, type, importance_score, token_count, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    bind: [id, user_id, agent_id, org_id, content, memoryType, importance, tokenCount, now, now],
+    bind: [id, user_id, agent_id, org_id, content.trim(), memoryType, importance, tokenCount, now, now],
   });
 
   db.exec({
@@ -111,12 +136,12 @@ export async function queryMemories(params, config = {}) {
     limit          = 5,
     type_filter,
     scope          = 'user',       // 'user' | 'agent' | 'org' | 'user+agent'
-    retrievalLimit = 100,
+    retrievalLimit = 5000,
   } = params;
 
   const db        = await getDb(config.dbPath);
   const safeLimit = Math.min(Math.max(1, limit), 20);
-  const candidates = Math.min(retrievalLimit, config.retrievalLimit || 100);
+  const candidates = Math.min(Math.max(1, retrievalLimit), config.retrievalLimit || 5000);
 
   const queryEmbedding = await embed(query, config);
 
@@ -153,7 +178,7 @@ export async function queryMemories(params, config = {}) {
           LEFT JOIN memory_embeddings me ON me.memory_id = m.id
           LEFT JOIN structured_memory sm ON sm.memory_id = m.id
           WHERE ${scopeClause} ${typeClause}
-          ORDER BY m.importance_score DESC, m.created_at DESC
+          ORDER BY m.created_at DESC
           LIMIT ?`,
     bind:     [...scopeBinds, candidates],
     callback: (row) => rows.push(row),
@@ -172,17 +197,18 @@ export async function queryMemories(params, config = {}) {
     .map(r => {
       const emb        = safeJsonParse(r[10], null);
       const similarity = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
-      const blended    = 0.7 * similarity + 0.3 * r[6];
-      return { row: r, similarity, blended };
+      const lexical    = lexicalSimilarity(query, `${r[4]} ${r[12] || ''} ${r[13] || ''} ${r[14] || ''}`);
+      const blended    = 0.6 * similarity + 0.2 * lexical + 0.2 * r[6];
+      return { row: r, similarity, lexical, blended };
     })
     .sort((a, b) => b.blended - a.blended)
     .slice(0, safeLimit);
 
   if (scored.length > 0) {
-    setImmediate(() => updateAccess(db, scored.map(s => s.row[0])));
+    updateAccess(db, scored.map(s => s.row[0]));
   }
 
-  return scored.map(({ row, similarity, blended }) => ({
+  return scored.map(({ row, similarity, lexical, blended }) => ({
     id:               row[0],
     user_id:          row[1],
     agent_id:         row[2],
@@ -192,6 +218,7 @@ export async function queryMemories(params, config = {}) {
     importance_score: row[6],
     token_count:      row[9] || estimateTokens(row[4]),
     similarity:       parseFloat(similarity.toFixed(4)),
+    lexical:          parseFloat(lexical.toFixed(4)),
     blended:          parseFloat(blended.toFixed(4)),
     created_at:       row[8],
     structured: {

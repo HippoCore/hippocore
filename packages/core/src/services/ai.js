@@ -45,6 +45,7 @@ export function estimateTokens(text) {
 // ALWAYS uses the dedicated embedding client + embedding model.
 // This is intentionally separate from the chat model.
 export async function embed(text, config = {}) {
+  if (typeof config.embedder === 'function') return config.embedder(text);
   const client = getEmbeddingClient(config);
   const model  = config.embeddingModel
     || process.env.HIPPO_CORE_EMBEDDING_MODEL
@@ -60,6 +61,7 @@ export async function embed(text, config = {}) {
 // ── Structured extraction ─────────────────────────────────────────────────────
 // Uses the chat client. Model can vary per agent.
 export async function extractStructured(content, config = {}) {
+  if (typeof config.extractor === 'function') return config.extractor(content);
   const client = getChatClient(config);
   const model  = config.model || process.env.HIPPO_CORE_MODEL || 'gpt-4o-mini';
 
@@ -90,6 +92,7 @@ Extract only what is present. Empty arrays/strings for missing fields.`,
 
 // ── Summarization ─────────────────────────────────────────────────────────────
 export async function summarizeMemories(texts, config = {}) {
+  if (typeof config.summarizer === 'function') return config.summarizer(texts);
   const client = getChatClient(config);
   const model  = config.model || process.env.HIPPO_CORE_MODEL || 'gpt-4o-mini';
   const joined = texts.map((t, i) => `[${i + 1}] ${t}`).join('\n');

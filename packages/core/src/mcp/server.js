@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { loadConfig as loadSharedConfig, VERSION } from '../config.js';
 
 // ALWAYS use home directory — all agents share the same memory store
 const HOME        = homedir();
@@ -13,6 +14,7 @@ const CONFIG_PATH = join(HOME, '.hippo-core', 'config.json');
 const DEFAULT_DB  = join(HOME, '.hippo-core', 'memory.db');
 
 function loadConfig() {
+  return loadSharedConfig();
   if (existsSync(CONFIG_PATH)) {
     try {
       const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
@@ -183,7 +185,7 @@ process.stdin.on('data', async (chunk) => {
     if (!id && method === 'notifications/initialized') continue;
     switch (method) {
       case 'initialize':
-        reply(id, { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'hippo-core', version: '0.6.0' } });
+        reply(id, { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'hippo-core', version: VERSION } });
         break;
       case 'tools/list':
         reply(id, { tools: TOOLS });

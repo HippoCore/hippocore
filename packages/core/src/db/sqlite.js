@@ -4,6 +4,7 @@
 import { join } from 'path';
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
+import { getDefaultDbPath } from '../config.js';
 
 const _require = createRequire(import.meta.url);
 let _db = null, _dbPath = null;
@@ -100,7 +101,7 @@ function migrate(sqlDb) {
 
 // Cached connection — used by MCP server (single long-running process)
 export async function getDb(dbPath) {
-  const p = dbPath || join(process.cwd(), '.hippo-core', 'memory.db');
+  const p = dbPath || getDefaultDbPath();
   if (_db && _dbPath === p) return _db;
   _dbPath = p;
   mkdirSync(p.replace(/[\\\/][^\\\/]+$/, ''), { recursive: true });
@@ -113,7 +114,7 @@ export async function getDb(dbPath) {
 
 // Fresh connection — always reads latest from disk (used by dashboard)
 export async function getFreshDb(dbPath) {
-  const p = dbPath || join(process.cwd(), '.hippo-core', 'memory.db');
+  const p = dbPath || getDefaultDbPath();
   mkdirSync(p.replace(/[\\\/][^\\\/]+$/, ''), { recursive: true });
   const sqlDb = await openDb(p);
   return wrap(sqlDb, p);

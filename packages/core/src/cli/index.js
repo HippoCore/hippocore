@@ -7,9 +7,10 @@
 import { createInterface } from 'readline';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { getConfigPath, getDefaultDbPath, getHippoHome, loadConfig, publicConfig } from '../config.js';
 
-const CONFIG_PATH = join(process.cwd(), '.hippo-core', 'config.json');
-const DB_PATH     = join(process.cwd(), '.hippo-core', 'memory.db');
+const CONFIG_PATH = getConfigPath();
+const DB_PATH     = getDefaultDbPath();
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const c = {
@@ -277,8 +278,8 @@ async function runSetup() {
   const track = (r) => { r.ok ? passed++ : failed++; return r; };
 
   await track(await step('Creating memory directory...', async () => {
-    mkdirSync(join(process.cwd(), '.hippo-core'), { recursive: true });
-    writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    mkdirSync(getHippoHome(), { recursive: true });
+    writeFileSync(CONFIG_PATH, JSON.stringify(publicConfig(config), null, 2), { mode: 0o600 });
   }));
 
   if (provider.id !== 'ollama' && provider.id !== 'lmstudio') {
@@ -389,7 +390,7 @@ async function runStatus() {
 
   let config = {};
   try {
-    config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+    config = loadConfig(JSON.parse(readFileSync(CONFIG_PATH, 'utf8')));
   } catch {
     console.log('  ' + red('Could not read config file.'));
     return;
@@ -428,7 +429,7 @@ async function runReEmbed() {
     process.exit(1);
   }
 
-  const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+  const config = loadConfig(JSON.parse(readFileSync(CONFIG_PATH, 'utf8')));
 
   console.log(`  ${arrow} Current embedding model: ${bold(config.embeddingModel || 'text-embedding-3-small')}`);
   console.log(`  ${arrow} Database: ${gray(config.dbPath || '.hippo-core/memory.db')}`);
