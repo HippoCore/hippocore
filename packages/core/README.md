@@ -22,6 +22,8 @@ Stable `memory_key` values let new evidence supersede old evidence without delet
 
 Interactions are selectively decomposed into atomic claims through `addMemories`, giving every independently changing fact or preference its own lifecycle. Run `npm run benchmark` to execute the bundled deterministic quality suite across temporal accuracy, conflict safety, privacy isolation, user control, and atomicity.
 
+The v1 shared vault uses native SQLite WAL transactions so multiple live MCP processes see committed writes safely. `npm run test:cross-agent` launches two independent servers and verifies shared recall, agent-private isolation, provenance, and clean shutdown.
+
 ## JavaScript
 
 ```js

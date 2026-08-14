@@ -1,5 +1,5 @@
 // packages/core/src/services/ai.js
-// Hippo Core v0.3.0 — AI service
+// Hippo Core — AI service
 //
 // SPLIT CONFIG:
 //   Chat model    — flexible, can change per agent per request

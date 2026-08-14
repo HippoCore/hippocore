@@ -1,52 +1,52 @@
-// packages/core/src/db/sqlite.js
-// sql.js — pure WebAssembly SQLite, works on Windows/Mac/Linux, Node 12+
+// Concurrency-safe embedded SQLite. WAL lets independent MCP server processes
+// share one user-owned vault without maintaining divergent in-memory copies.
 
-import { join } from 'path';
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { dirname } from 'path';
+import { mkdirSync } from 'fs';
 import { createRequire } from 'module';
 import { getDefaultDbPath } from '../config.js';
 
-const _require = createRequire(import.meta.url);
-let _db = null, _dbPath = null;
+const require = createRequire(import.meta.url);
+const Database = require('better-sqlite3');
+let cached = null;
+let cachedPath = null;
 
-async function openDb(filePath) {
-  const initSqlJs = _require('sql.js');
-  const SQL = await initSqlJs();
-  return existsSync(filePath)
-    ? new SQL.Database(readFileSync(filePath))
-    : new SQL.Database();
+function openDb(filePath) {
+  mkdirSync(dirname(filePath), { recursive: true });
+  const db = new Database(filePath, { timeout: 5000 });
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+  db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
+  migrate(db);
+  return db;
 }
 
-function wrap(sqlDb, filePath) {
+function wrap(db) {
   return {
     exec({ sql, bind = [], callback } = {}) {
+      const statement = sql.trim();
       if (callback) {
-        try {
-          const stmt = sqlDb.prepare(sql.trim());
-          if (bind.length) stmt.bind(bind);
-          while (stmt.step()) callback(stmt.get());
-          stmt.free();
-        } catch {}
-      } else if (bind.length > 0) {
-        sqlDb.run(sql.trim(), bind);
-        try { writeFileSync(filePath, Buffer.from(sqlDb.export())); } catch {}
+        const rows = db.prepare(statement).raw(true).all(...bind);
+        for (const row of rows) callback(row);
+      } else if (bind.length) {
+        db.prepare(statement).run(...bind);
       } else {
-        for (const s of sql.split(';').map(s => s.trim()).filter(Boolean)) {
-          try { sqlDb.run(s); } catch {}
-        }
-        try { writeFileSync(filePath, Buffer.from(sqlDb.export())); } catch {}
+        db.exec(statement);
       }
     },
-    close() {
-      try { writeFileSync(filePath, Buffer.from(sqlDb.export())); } catch {}
-      sqlDb.close();
+    transaction(fn) {
+      return db.transaction(fn).immediate();
     },
-    _sqlDb: sqlDb,
+    close() {
+      if (db.open) db.close();
+    },
+    _db: db,
   };
 }
 
-function migrate(sqlDb) {
-  const stmts = [
+function migrate(db) {
+  const statements = [
     `CREATE TABLE IF NOT EXISTS memories (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
       agent_id TEXT NOT NULL DEFAULT 'default', org_id TEXT NOT NULL DEFAULT 'default',
@@ -59,7 +59,6 @@ function migrate(sqlDb) {
     `CREATE INDEX IF NOT EXISTS idx_mem_ns ON memories(user_id, agent_id, org_id)`,
     `CREATE INDEX IF NOT EXISTS idx_mem_type ON memories(type)`,
     `CREATE INDEX IF NOT EXISTS idx_mem_time ON memories(created_at)`,
-    `CREATE INDEX IF NOT EXISTS idx_mem_lifecycle ON memories(user_id, org_id, memory_key, status)`,
     `CREATE TABLE IF NOT EXISTS structured_memory (
       id TEXT PRIMARY KEY,
       memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
@@ -94,18 +93,17 @@ function migrate(sqlDb) {
     `CREATE TABLE IF NOT EXISTS request_log (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
       agent_id TEXT NOT NULL DEFAULT 'default', org_id TEXT NOT NULL DEFAULT 'default',
-      framework TEXT NOT NULL DEFAULT 'unknown',
-      query TEXT, memories_retrieved INTEGER DEFAULT 0,
-      tokens_injected INTEGER DEFAULT 0,
-      retrieval_ms INTEGER DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
+      framework TEXT NOT NULL DEFAULT 'unknown', query TEXT,
+      memories_retrieved INTEGER DEFAULT 0, tokens_injected INTEGER DEFAULT 0,
+      retrieval_ms INTEGER DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
     `CREATE INDEX IF NOT EXISTS idx_req_time ON request_log(created_at)`,
     `CREATE TABLE IF NOT EXISTS hippo_config (
       key TEXT PRIMARY KEY, value TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')))`,
   ];
-  for (const s of stmts) { try { sqlDb.run(s); } catch {} }
-  for (const s of [
+  for (const sql of statements) db.exec(sql);
+
+  const additions = [
     "ALTER TABLE memories ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'default'",
     "ALTER TABLE memories ADD COLUMN org_id TEXT NOT NULL DEFAULT 'default'",
     "ALTER TABLE memory_embeddings ADD COLUMN embedding_model TEXT NOT NULL DEFAULT 'unknown'",
@@ -123,44 +121,45 @@ function migrate(sqlDb) {
     "ALTER TABLE memories ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
     "ALTER TABLE memories ADD COLUMN memory_key TEXT",
     "ALTER TABLE memories ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'",
-  ]) { try { sqlDb.run(s); } catch {} }
-
-  // Existing memories predate lifecycle tracking. Treat their creation time as
-  // the beginning of validity without changing their historical evidence.
-  try { sqlDb.run("UPDATE memories SET valid_from = created_at WHERE valid_from IS NULL"); } catch {}
-  try { sqlDb.run("CREATE INDEX IF NOT EXISTS idx_mem_lifecycle ON memories(user_id, org_id, memory_key, status)"); } catch {}
-}
-
-// Cached connection — used by MCP server (single long-running process)
-export async function getDb(dbPath) {
-  const p = dbPath || getDefaultDbPath();
-  if (_db && _dbPath === p) return _db;
-  _dbPath = p;
-  mkdirSync(p.replace(/[\\\/][^\\\/]+$/, ''), { recursive: true });
-  const sqlDb = await openDb(p);
-  _db = wrap(sqlDb, p);
-  migrate(sqlDb);
-  try { writeFileSync(p, Buffer.from(sqlDb.export())); } catch {}
-  return _db;
-}
-
-// Fresh connection — always reads latest from disk (used by dashboard)
-export async function getFreshDb(dbPath) {
-  const p = dbPath || getDefaultDbPath();
-  mkdirSync(p.replace(/[\\\/][^\\\/]+$/, ''), { recursive: true });
-  const sqlDb = await openDb(p);
-  return wrap(sqlDb, p);
-}
-
-// Reset cached connection
-export function resetDb() { _db = null; }
-
-export function saveDb() {
-  if (_db?._sqlDb && _dbPath) {
-    try { writeFileSync(_dbPath, Buffer.from(_db._sqlDb.export())); } catch {}
+  ];
+  for (const sql of additions) {
+    try { db.exec(sql); } catch (error) {
+      if (!String(error.message).includes('duplicate column name')) throw error;
+    }
   }
+  db.exec("UPDATE memories SET valid_from = created_at WHERE valid_from IS NULL");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_mem_lifecycle ON memories(user_id, org_id, memory_key, status)");
 }
+
+export async function getDb(dbPath) {
+  const path = dbPath || getDefaultDbPath();
+  if (cached && cachedPath === path && cached._db.open) return cached;
+  if (cached) cached.close();
+  cachedPath = path;
+  cached = wrap(openDb(path));
+  return cached;
+}
+
+export async function getFreshDb(dbPath) {
+  const path = dbPath || getDefaultDbPath();
+  return {
+    exec(args) {
+      const connection = wrap(openDb(path));
+      try { return connection.exec(args); } finally { connection.close(); }
+    },
+    close() {},
+  };
+}
+
+export function resetDb() {
+  if (cached) cached.close();
+  cached = null;
+  cachedPath = null;
+}
+
+// Native SQLite commits each statement/transaction directly to the WAL.
+export function saveDb() {}
 
 export function closeDb() {
-  if (_db) { _db.close(); _db = null; }
+  resetDb();
 }

@@ -1,5 +1,5 @@
 // packages/core/src/dashboard/server.js
-// Hippo Core Dashboard v0.6.0
+// Hippo Core Dashboard
 
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
@@ -9,7 +9,7 @@ import { createServer } from 'http';
 import { getFreshDb, resetDb } from '../db/sqlite.js';
 import { queryMemories, getUserProfile, getMetrics } from '../services/memory.js';
 import { buildPrompt } from '../services/ai.js';
-import { loadConfig as loadSharedConfig } from '../config.js';
+import { loadConfig as loadSharedConfig, VERSION } from '../config.js';
 
 const __dirname    = dirname(fileURLToPath(import.meta.url));
 const HTML_PATH    = join(__dirname, 'ui.html');
@@ -237,7 +237,7 @@ export async function startDashboard(configOverride = {}) {
   });
 
   server.listen(port, () => {
-    console.log(`\n🦛 Hippo Core Dashboard v0.6.0`);
+    console.log(`\n🦛 Hippo Core Dashboard v${VERSION}`);
     console.log(`   Running at http://localhost:${port}\n`);
   });
 

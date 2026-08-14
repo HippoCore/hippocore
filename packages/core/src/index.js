@@ -6,7 +6,7 @@
 // ██║  ██║██║██║     ██║     ╚██████╔╝    ╚██████╗╚██████╔╝██║  ██║███████╗
 // ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝      ╚═════╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
 //
-// v0.3.0 — Multi-agent namespacing + split embedding config
+// Multi-agent namespacing + split embedding config
 // Named for the hippocampus — the brain's memory center.
 
 export {
@@ -43,7 +43,7 @@ export { getDb, closeDb } from './db/sqlite.js';
 export { VERSION, getHippoHome, getConfigPath, getDefaultDbPath, loadConfig, publicConfig } from './config.js';
 
 /**
- * createMemory — main entry point for Hippo Core v0.3.0
+ * createMemory — main entry point for Hippo Core
  *
  * Config:
  *   // Chat model — flexible, can change per agent

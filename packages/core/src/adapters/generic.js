@@ -1,5 +1,5 @@
 // packages/core/src/adapters/generic.js
-// Hippo Core v0.3.0 — universal adapter
+// Hippo Core — universal adapter
 //
 // Config:
 //   apiKey, baseURL, model              — chat provider (flexible, per-agent)
