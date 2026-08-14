@@ -14,7 +14,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getDb, saveDb } from '../db/sqlite.js';
-import { embed, extractStructured, summarizeMemories, estimateTokens } from './ai.js';
+import { embed, extractStructured, extractMemoryItems, summarizeMemories, estimateTokens } from './ai.js';
 
 function computeImportance({ recencyDays = 0, accessCount = 0, explicit = 0.5 }) {
   const DECAY   = 30;
@@ -96,7 +96,7 @@ export async function addMemory(params, config = {}) {
   const memoryType = normalizeType(type);
   const normalizedContent = content.trim();
 
-  const structured = await extractStructured(normalizedContent, config);
+  const structured = params.structured || await extractStructured(normalizedContent, config);
 
   const shouldRemember = params.should_remember ?? params.shouldRemember ?? structured.should_remember;
   if (shouldRemember === false) {
@@ -204,6 +204,40 @@ export async function addMemory(params, config = {}) {
     provenance: { source_kind: sourceKind, source_ref: sourceRef, evidence_status: evidenceStatus, confidence },
     valid_from: validFrom, valid_until: validUntil, supersedes: prior.length && conflictMode !== 'dispute' ? prior[0].id : null,
   };
+}
+
+export async function addMemories(params, config = {}) {
+  const { content } = params;
+  if (typeof content !== 'string' || !content.trim()) throw new Error('content is required');
+  const extraction = await extractMemoryItems(content.trim(), config);
+  const items = Array.isArray(extraction.memories) ? extraction.memories : [];
+  if (extraction.should_remember === false || !items.length) {
+    return { memories: [], skipped: true, reason: extraction.reason || 'No durable atomic memories found' };
+  }
+
+  const memories = [];
+  for (const item of items) {
+    if (!item || typeof item.content !== 'string' || !item.content.trim()) continue;
+    const structured = {
+      facts: item.facts || [], preferences: item.preferences || [], intent: item.intent || '',
+      entities: item.entities || {}, should_remember: true, memory_key: item.memory_key || null,
+      confidence: item.confidence, valid_from: item.valid_from, valid_until: item.valid_until,
+    };
+    const result = await addMemory({
+      ...params,
+      content: item.content,
+      type: item.type || params.type || 'long_term',
+      memory_key: item.memory_key || params.memory_key || null,
+      confidence: item.confidence ?? params.confidence,
+      valid_from: item.valid_from || params.valid_from,
+      valid_until: item.valid_until || params.valid_until,
+      source_ref: item.source_ref || params.source_ref,
+      metadata: { ...(params.metadata || {}), extraction_reason: extraction.reason || '', source_interaction: content },
+      structured,
+    }, config);
+    if (!result.skipped) memories.push(result);
+  }
+  return { memories, skipped: memories.length === 0, reason: memories.length ? null : 'No valid atomic memories found' };
 }
 
 // ── Query memories ────────────────────────────────────────────────────────────

@@ -93,6 +93,38 @@ Extract only what is present. Empty arrays/strings for missing fields.`,
   }
 }
 
+// Extract independently governed memory claims from one interaction. Each item
+// can be superseded, disputed, retracted, or shared without affecting siblings.
+export async function extractMemoryItems(content, config = {}) {
+  if (typeof config.itemExtractor === 'function') return config.itemExtractor(content);
+  const client = getChatClient(config);
+  const model = config.model || process.env.HIPPO_CORE_MODEL || 'gpt-4o-mini';
+  const response = await client.chat.completions.create({
+    model,
+    temperature: 0,
+    max_tokens: 1200,
+    messages: [
+      {
+        role: 'system',
+        content: `You extract durable, atomic memories from an interaction.
+Return ONLY valid JSON with this schema:
+{"should_remember":true,"reason":"string","memories":[{"content":"one self-contained claim","type":"preference|behavioral|long_term|event|short_term","memory_key":"stable.subject.key or null","confidence":0.0,"valid_from":null,"valid_until":null,"facts":["string"],"preferences":["string"],"intent":"string","entities":{}}]}
+Create one item per independently changing claim. Never combine unrelated facts.
+Use stable keys for changeable claims, such as preference.response_detail or profile.home_city.
+Exclude greetings, repetition, transient chatter, and claims not supported by the text.
+Confidence measures extraction certainty, not importance.`,
+      },
+      { role: 'user', content },
+    ],
+  });
+  const raw = response.choices[0].message.content.trim();
+  try { return JSON.parse(raw); } catch {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) { try { return JSON.parse(match[0]); } catch {} }
+    return { should_remember: false, reason: 'Invalid extraction response', memories: [] };
+  }
+}
+
 // ── Summarization ─────────────────────────────────────────────────────────────
 export async function summarizeMemories(texts, config = {}) {
   if (typeof config.summarizer === 'function') return config.summarizer(texts);

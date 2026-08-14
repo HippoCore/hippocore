@@ -20,6 +20,8 @@ The MCP server provides `hippo_recall`, `hippo_remember`, `hippo_history`, `hipp
 
 Stable `memory_key` values let new evidence supersede old evidence without deleting history. Provenance, confidence, temporal validity, lifecycle status, relations, and audit events remain inspectable, while normal recall returns only active evidence.
 
+Interactions are selectively decomposed into atomic claims through `addMemories`, giving every independently changing fact or preference its own lifecycle. Run `npm run benchmark` to execute the bundled deterministic quality suite across temporal accuracy, conflict safety, privacy isolation, user control, and atomicity.
+
 ## JavaScript
 
 ```js

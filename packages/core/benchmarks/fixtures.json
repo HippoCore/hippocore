@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "current-truth",
+      "dimension": "temporal_accuracy",
+      "actions": [
+        { "op": "remember", "params": { "user_id": "john", "type": "preference", "memory_key": "preference.response_detail", "content": "John prefers concise answers", "valid_from": "2026-01-01T00:00:00.000Z" } },
+        { "op": "remember", "params": { "user_id": "john", "type": "preference", "memory_key": "preference.response_detail", "content": "John now prefers detailed answers", "valid_from": "2026-08-14T00:00:00.000Z" } }
+      ],
+      "queries": [
+        { "user_id": "john", "query": "response detail preference", "limit": 1, "expected_top_contains": "detailed", "forbidden_contains": "concise" }
+      ]
+    },
+    {
+      "id": "unresolved-conflict",
+      "dimension": "conflict_safety",
+      "actions": [
+        { "op": "remember", "params": { "user_id": "sam", "memory_key": "profile.home_city", "content": "Sam lives in Toronto" } },
+        { "op": "remember", "params": { "user_id": "sam", "memory_key": "profile.home_city", "content": "Sam lives in Montreal", "conflict_mode": "dispute" } }
+      ],
+      "queries": [
+        { "user_id": "sam", "query": "home city", "expected_count": 0 }
+      ]
+    },
+    {
+      "id": "namespace-boundary",
+      "dimension": "privacy_isolation",
+      "actions": [
+        { "op": "remember", "params": { "user_id": "alex", "org_id": "alpha", "memory_key": "preference.editor", "content": "Alex uses Vim" } },
+        { "op": "remember", "params": { "user_id": "alex", "org_id": "beta", "memory_key": "preference.editor", "content": "Alex uses Emacs" } }
+      ],
+      "queries": [
+        { "user_id": "alex", "org_id": "alpha", "query": "preferred editor", "limit": 1, "expected_top_contains": "Vim", "forbidden_contains": "Emacs" }
+      ]
+    },
+    {
+      "id": "retraction",
+      "dimension": "user_control",
+      "actions": [
+        { "op": "remember", "as": "color", "params": { "user_id": "ria", "memory_key": "profile.favorite_color", "content": "Ria's favorite color is blue" } },
+        { "op": "retract", "ref": "color", "reason": "User withdrew the claim" }
+      ],
+      "queries": [
+        { "user_id": "ria", "query": "favorite color", "expected_count": 0 }
+      ]
+    },
+    {
+      "id": "atomic-extraction",
+      "dimension": "atomicity",
+      "actions": [
+        {
+          "op": "remember_many",
+          "expected_stored": 3,
+          "params": { "user_id": "maya", "source_ref": "message-42", "content": "I live in Toronto, prefer detailed answers, and use Vim." },
+          "extraction": {
+            "should_remember": true,
+            "reason": "Three durable independently changing claims",
+            "memories": [
+              { "content": "Maya lives in Toronto", "type": "long_term", "memory_key": "profile.home_city", "confidence": 1, "facts": ["Maya lives in Toronto"] },
+              { "content": "Maya prefers detailed answers", "type": "preference", "memory_key": "preference.response_detail", "confidence": 1, "preferences": ["Maya prefers detailed answers"] },
+              { "content": "Maya uses Vim", "type": "preference", "memory_key": "preference.editor", "confidence": 1, "preferences": ["Maya uses Vim"] }
+            ]
+          }
+        }
+      ],
+      "queries": [
+        { "user_id": "maya", "query": "home city Toronto", "limit": 1, "expected_key": "profile.home_city", "require_explanation": true, "expected_source_ref": "message-42" },
+        { "user_id": "maya", "query": "detailed answers", "limit": 1, "expected_key": "preference.response_detail" },
+        { "user_id": "maya", "query": "editor Vim", "limit": 1, "expected_key": "preference.editor" }
+      ]
+    }
+  ]
+}
