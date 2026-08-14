@@ -1,6 +1,6 @@
 {
   "name": "@hippo-core/core",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Private local memory shared by MCP-compatible AI agents",
   "type": "module",
   "main": "src/index.js",
@@ -18,10 +18,11 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "benchmark": "node benchmarks/run.js"
+    "benchmark": "node benchmarks/run.js",
+    "test:cross-agent": "node --test tests/cross-agent-mcp.test.js"
   },
   "files": ["src", "benchmarks", "README.md", "LICENSE"],
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=22" },
   "keywords": [
     "ai",
     "agents",
@@ -40,7 +41,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "sql.js": "^1.12.0",
+    "better-sqlite3": "^13.0.3",
     "openai": "^4.20.0",
     "uuid": "^11.1.1"
   },

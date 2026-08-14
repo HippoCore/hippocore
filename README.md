@@ -88,6 +88,18 @@ npm run benchmark
 
 The deterministic benchmark executes the real storage and recall APIs without paid model calls. Its versioned fixtures currently measure temporal accuracy, unresolved-conflict safety, namespace isolation, user retraction, explainability, and atomic multi-fact extraction. A regression exits non-zero and reports the exact failed check.
 
+## Cross-agent shared vault
+
+Hippo Core uses native SQLite in WAL mode with atomic writes and busy-timeout handling. Independent MCP server processes see committed memories immediately without reopening the vault, while `user+agent` scope keeps agent-private evidence isolated.
+
+Run the end-to-end proof locally:
+
+```bash
+npm run test:cross-agent
+```
+
+The test launches two live MCP servers and a local mock model provider. Agent B opens its database connection first, Agent A stores a preference, and Agent B then demonstrates both private-scope denial and authorized user-scope recall with source provenance.
+
 ## Local dashboard
 
 ```bash

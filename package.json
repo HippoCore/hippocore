@@ -1,6 +1,6 @@
 {
   "name": "hippocore",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Local memory infrastructure for MCP-compatible AI agents",
   "workspaces": ["packages/*"],
@@ -8,7 +8,8 @@
     "test": "npm test --workspace @hippo-core/core",
     "demo": "node examples/generic/demo.js",
     "pack:check": "npm pack --dry-run --workspace @hippo-core/core",
-    "benchmark": "node packages/core/benchmarks/run.js"
+    "benchmark": "node packages/core/benchmarks/run.js",
+    "test:cross-agent": "node --test packages/core/tests/cross-agent-mcp.test.js"
   },
   "license": "MIT"
 }

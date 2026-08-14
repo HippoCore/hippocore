@@ -1,5 +1,5 @@
 // packages/core/src/services/memory.js
-// Hippo Core v0.3.0
+// Hippo Core memory engine
 //
 // Multi-agent namespacing: { user_id, agent_id, org_id }
 // - user_id  — the end user (required)
@@ -136,19 +136,21 @@ export async function addMemory(params, config = {}) {
   const dimensions   = embedding.length;
 
   const prior = [];
-  if (memoryKey) {
+  let initialStatus = 'active';
+  db.transaction(() => {
+    if (memoryKey) {
+      db.exec({
+        sql: `SELECT id, content, valid_from FROM memories
+              WHERE user_id = ? AND org_id = ? AND memory_key = ? AND status = 'active'
+              ORDER BY valid_from DESC, created_at DESC LIMIT 1`,
+        bind: [user_id, org_id, memoryKey],
+        callback: row => prior.push({ id: row[0], content: row[1], valid_from: row[2] }),
+      });
+    }
+
+    initialStatus = prior.length && conflictMode === 'dispute' ? 'disputed' : 'active';
+
     db.exec({
-      sql: `SELECT id, content, valid_from FROM memories
-            WHERE user_id = ? AND org_id = ? AND memory_key = ? AND status = 'active'
-            ORDER BY valid_from DESC, created_at DESC LIMIT 1`,
-      bind: [user_id, org_id, memoryKey],
-      callback: row => prior.push({ id: row[0], content: row[1], valid_from: row[2] }),
-    });
-  }
-
-  const initialStatus = prior.length && conflictMode === 'dispute' ? 'disputed' : 'active';
-
-  db.exec({
     sql: `INSERT INTO memories
             (id, user_id, agent_id, org_id, content, type, importance_score, token_count,
              source_kind, source_ref, confidence, evidence_status, valid_from, valid_until,
@@ -196,6 +198,7 @@ export async function addMemory(params, config = {}) {
       addEvent(db, previous.id, 'superseded', { by_memory_id: id }, actor);
     }
   }
+    });
 
   saveDb();
   return {
