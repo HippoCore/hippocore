@@ -142,6 +142,13 @@ hippo-core dashboard
 
 The dashboard listens on `http://localhost:4444` by default.
 
+Its overview makes Hippo Core's value visible by comparing the accumulated
+memory context eligible for each recall with the targeted context actually
+injected. It reports the estimated tokens avoided and context-reduction
+percentage globally and for each recent recall. The counterfactual is
+snapshotted when recall happens and is explicitly labeled as a context estimate,
+not an exact provider bill.
+
 ## Development
 
 ```bash

@@ -12,7 +12,7 @@
   --green:#4caf7d;--red:#e05c5c;--yellow:#c8a84b;--blue:#5b8ef0;--purple:#a78bfa;
   --mono:'JetBrains Mono','Fira Code',monospace;--sans:'Inter',system-ui,sans-serif;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.6;min-height:100vh}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.6;min-height:100vh;overflow-x:hidden}
 header{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
 header h1{font-size:15px;font-weight:600;letter-spacing:.04em;color:var(--accent)}
 .version{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--border2);padding:2px 8px;border-radius:3px}
@@ -59,7 +59,7 @@ pre{background:var(--bg);border:1px solid var(--border);border-radius:4px;paddin
 .empty{text-align:center;padding:40px;color:var(--muted);font-size:12px}
 .empty .emoji{font-size:32px;margin-bottom:8px}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 @media(max-width:900px){.two-col,.three-col{grid-template-columns:1fr}}
 .loading{color:var(--muted);font-size:12px;padding:20px;text-align:center}
 .ts{font-family:var(--mono);font-size:10px;color:var(--muted)}
@@ -71,13 +71,21 @@ pre{background:var(--bg);border:1px solid var(--border);border-radius:4px;paddin
 .savings-number{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--green);line-height:1}
 .savings-label{font-size:11px;color:var(--muted2);margin-top:6px}
 .savings-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.savings-story{margin-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.savings-kicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);font-weight:700}
+.savings-headline{font-size:18px;font-weight:650;color:var(--text);margin-top:3px}
+.savings-story>div:first-child{flex:1 1 420px}
+.savings-method{font-size:10px;color:var(--muted2);max-width:520px;text-align:left;flex:1 1 320px}
+.savings-bar{height:8px;background:linear-gradient(90deg,var(--green),#78d6a3);border-radius:999px;overflow:hidden;margin:12px 0 18px}
+.savings-bar-used{height:100%;background:var(--blue);border-radius:999px;transition:width .3s ease}
+#recent-req{overflow-x:auto}
 </style>
 </head>
 <body>
 <header>
   <span style="font-size:20px">🦛</span>
   <h1>Hippo Core</h1>
-  <span class="version">v1.0.0</span>
+  <span class="version" id="dashboard-version">vâ€”</span>
   <span style="color:var(--muted);font-size:12px;margin-left:4px">/ Developer Dashboard</span>
   <div class="dot" id="dot"></div>
 </header>
@@ -245,7 +253,7 @@ async function post(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-
 function showError(m){const b=document.getElementById('err');b.textContent='⚠ '+m;b.style.display='block';setTimeout(()=>{b.style.display='none';},5000);}
 function badge(t,c='gray'){return`<span class="badge badge-${c}">${esc(t)}</span>`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function relTime(iso){if(!iso)return'—';const d=Date.now()-new Date(iso).getTime();if(d<60000)return`${Math.floor(d/1000)}s ago`;if(d<3600000)return`${Math.floor(d/60000)}m ago`;if(d<86400000)return`${Math.floor(d/3600000)}h ago`;return`${Math.floor(d/86400000)}d ago`;}
+function relTime(iso){if(!iso)return'—';const normalized=/z$|[+-]\d\d:?\d\d$/i.test(iso)?iso:iso.replace(' ','T')+'Z';const d=Math.max(0,Date.now()-new Date(normalized).getTime());if(d<60000)return`${Math.floor(d/1000)}s ago`;if(d<3600000)return`${Math.floor(d/60000)}m ago`;if(d<86400000)return`${Math.floor(d/3600000)}h ago`;return`${Math.floor(d/86400000)}d ago`;}
 function nsTag(a,o){const p=[];if(a&&a!=='default')p.push(badge(a,'purple'));if(o&&o!=='default')p.push(badge(o,'blue'));return p.join(' ')||badge('default','gray');}
 function score(v,h=0.7,l=0.4){const c=v>=h?'var(--green)':v>=l?'var(--yellow)':'var(--red)';return`<span style="font-family:var(--mono);font-size:11px;color:${c}">${v}</span>`;}
 
@@ -253,37 +261,48 @@ function score(v,h=0.7,l=0.4){const c=v>=h?'var(--green)':v>=l?'var(--yellow)':'
 async function loadOverview(){
   try{
     const d = await get('/metrics');
+    document.getElementById('dashboard-version').textContent = `v${d.version || 'unknown'}`;
     document.getElementById('dot').className = 'dot';
     document.getElementById('last-refresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
     const rl = d.request_log || {};
-    const total_recalls        = rl.total_recalls || 0;
+    const total_recalls         = rl.recall_requests || 0;
     const total_tokens_injected = rl.total_tokens_injected || 0;
-    const avg_tokens           = rl.avg_tokens_injected || 0;
-    const avg_ms               = rl.avg_retrieval_ms || 0;
+    const total_tokens_without  = rl.total_tokens_without_hippo || 0;
+    const total_tokens_saved    = rl.total_tokens_saved || 0;
+    const reduction             = rl.token_reduction_percent || 0;
+    const avg_ms                = rl.avg_retrieval_ms || 0;
+    const usedPercent           = total_tokens_without > 0 ? Math.min(100,(total_tokens_injected/total_tokens_without)*100) : 0;
 
     // Savings hero — real numbers only
     document.getElementById('savings-hero-container').innerHTML = `
       <div class="savings-hero">
+        <div style="grid-column:1/-1">
+          <div class="savings-story">
+            <div><div class="savings-kicker">Context efficiency</div><div class="savings-headline">Hippo Core avoided ${total_tokens_saved.toLocaleString()} estimated context tokens</div></div>
+            <div class="savings-method">Estimate compares all active memory eligible for each recall with the targeted context actually injected. It is a context estimate, not an exact provider bill.</div>
+          </div>
+          <div class="savings-bar" title="${reduction.toFixed(1)}% estimated context reduction"><div class="savings-bar-used" style="width:${usedPercent.toFixed(1)}%"></div></div>
+        </div>
         <div class="savings-item">
-          <div class="savings-number">${total_recalls.toLocaleString()}</div>
-          <div class="savings-label">Total Recalls</div>
-          <div class="savings-sub">times agents used memory</div>
+          <div class="savings-number" style="color:var(--muted2)">${total_tokens_without.toLocaleString()}</div>
+          <div class="savings-label">Without Hippo Core</div>
+          <div class="savings-sub">estimated accumulated context</div>
         </div>
         <div class="savings-item">
           <div class="savings-number" style="color:var(--blue)">${total_tokens_injected.toLocaleString()}</div>
-          <div class="savings-label">Tokens Injected</div>
-          <div class="savings-sub">targeted context delivered</div>
+          <div class="savings-label">With Hippo Core</div>
+          <div class="savings-sub">actual targeted context injected</div>
         </div>
         <div class="savings-item">
-          <div class="savings-number" style="color:var(--purple)">${avg_tokens.toFixed(0)}</div>
-          <div class="savings-label">Avg Tokens / Recall</div>
-          <div class="savings-sub">context per agent call</div>
+          <div class="savings-number">${total_tokens_saved.toLocaleString()}</div>
+          <div class="savings-label">Tokens Avoided</div>
+          <div class="savings-sub">estimated difference</div>
         </div>
         <div class="savings-item">
-          <div class="savings-number" style="color:var(--yellow)">${avg_ms.toFixed(0)}<span style="font-size:14px">ms</span></div>
-          <div class="savings-label">Avg Recall Time</div>
-          <div class="savings-sub">memory retrieval speed</div>
+          <div class="savings-number" style="color:var(--purple)">${reduction.toFixed(1)}<span style="font-size:14px">%</span></div>
+          <div class="savings-label">Context Reduction</div>
+          <div class="savings-sub">across ${total_recalls.toLocaleString()} recalls</div>
         </div>
       </div>`;
 
@@ -305,14 +324,16 @@ async function loadOverview(){
 
     const reqs = d.recent_requests || [];
     document.getElementById('recent-req').innerHTML = reqs.length
-      ? `<table><thead><tr><th>User</th><th>Agent</th><th>Framework</th><th>Query</th><th>Memories</th><th>Tokens</th><th>Latency</th><th>When</th></tr></thead><tbody>
+      ? `<table><thead><tr><th>User</th><th>Agent</th><th>Framework</th><th>Query</th><th>Memories</th><th>Without</th><th>With</th><th>Saved</th><th>Latency</th><th>When</th></tr></thead><tbody>
           ${reqs.map(r=>`<tr>
             <td class="mono">${esc(r.user_id?.slice(0,10)||'—')}</td>
             <td>${nsTag(r.agent_id,r.org_id)}</td>
             <td>${badge(r.framework||'mcp','blue')}</td>
             <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(r.query||'—')}</td>
             <td class="mono">${r.memories_retrieved||0}</td>
+            <td class="mono">${r.tokens_without_hippo||0}</td>
             <td class="mono">${r.tokens_injected||0}</td>
+            <td class="mono" style="color:var(--green)">${r.tokens_saved||0}</td>
             <td class="mono">${r.retrieval_ms||0}ms</td>
             <td class="mono" style="color:var(--muted)">${relTime(r.created_at)}</td>
           </tr>`).join('')}
@@ -323,8 +344,8 @@ async function loadOverview(){
     document.getElementById('perf-stats').innerHTML = `
       <div class="stat"><div class="stat-label">Avg Retrieval</div><div class="stat-value">${avg_ms.toFixed(0)}<span style="font-size:12px;color:var(--muted)">ms</span></div></div>
       <div class="stat"><div class="stat-label">Total Recalls</div><div class="stat-value">${total_recalls.toLocaleString()}</div></div>
-      <div class="stat"><div class="stat-label">Tokens Injected</div><div class="stat-value blue">${total_tokens_injected.toLocaleString()}</div></div>
-      <div class="stat"><div class="stat-label">Avg Tokens/Recall</div><div class="stat-value">${avg_tokens.toFixed(0)}</div></div>`;
+      <div class="stat"><div class="stat-label">Tokens Avoided</div><div class="stat-value green">${total_tokens_saved.toLocaleString()}</div></div>
+      <div class="stat"><div class="stat-label">Context Reduction</div><div class="stat-value purple">${reduction.toFixed(1)}%</div></div>`;
 
     const users = d.top_users || [];
     document.getElementById('perf-users').innerHTML = users.length

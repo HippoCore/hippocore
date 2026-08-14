@@ -95,6 +95,7 @@ function migrate(db) {
       agent_id TEXT NOT NULL DEFAULT 'default', org_id TEXT NOT NULL DEFAULT 'default',
       framework TEXT NOT NULL DEFAULT 'unknown', query TEXT,
       memories_retrieved INTEGER DEFAULT 0, tokens_injected INTEGER DEFAULT 0,
+      tokens_without_hippo INTEGER DEFAULT 0,
       retrieval_ms INTEGER DEFAULT 0, created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
     `CREATE INDEX IF NOT EXISTS idx_req_time ON request_log(created_at)`,
     `CREATE TABLE IF NOT EXISTS hippo_config (
@@ -112,6 +113,7 @@ function migrate(db) {
     "ALTER TABLE request_log ADD COLUMN org_id TEXT NOT NULL DEFAULT 'default'",
     "ALTER TABLE request_log ADD COLUMN framework TEXT NOT NULL DEFAULT 'unknown'",
     "ALTER TABLE request_log ADD COLUMN tokens_injected INTEGER DEFAULT 0",
+    "ALTER TABLE request_log ADD COLUMN tokens_without_hippo INTEGER DEFAULT 0",
     "ALTER TABLE memories ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'user'",
     "ALTER TABLE memories ADD COLUMN source_ref TEXT",
     "ALTER TABLE memories ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0",
@@ -128,6 +130,7 @@ function migrate(db) {
     }
   }
   db.exec("UPDATE memories SET valid_from = created_at WHERE valid_from IS NULL");
+  db.exec("UPDATE request_log SET tokens_without_hippo = tokens_injected WHERE tokens_without_hippo = 0 AND tokens_injected > 0");
   db.exec("CREATE INDEX IF NOT EXISTS idx_mem_lifecycle ON memories(user_id, org_id, memory_key, status)");
 }
 

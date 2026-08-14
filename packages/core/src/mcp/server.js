@@ -110,7 +110,7 @@ const TOOLS = [
 
 async function handleToolCall(id, toolName, args) {
   const config = loadConfig();
-  const { addMemory, addMemories, queryMemories, getMetrics, getMemoryHistory, resolveConflict, retractMemory } = await import('../services/memory.js');
+  const { addMemory, addMemories, queryMemories, getMetrics, getMemoryHistory, resolveConflict, retractMemory, estimateEligibleMemoryTokens } = await import('../services/memory.js');
   const { buildMemoryContext } = await import('../services/ai.js');
   const { getDb, saveDb } = await import('../db/sqlite.js');
   const { v4: uuidv4 } = await import('uuid');
@@ -123,6 +123,7 @@ async function handleToolCall(id, toolName, args) {
       if (!query) return replyError(id, -32602, 'query is required');
 
       const memories = await queryMemories({ user_id, agent_id, org_id, query, limit, scope, include_history }, config);
+      const eligible_tokens = await estimateEligibleMemoryTokens({ user_id, agent_id, org_id, scope, include_history }, config);
       const retrieval_ms = Date.now() - t0;
 
       // Count tokens actually injected
@@ -140,13 +141,15 @@ async function handleToolCall(id, toolName, args) {
         responseText = `Retrieved ${memories.length} relevant memories (${tokens_injected} tokens of context):\n\n${summary}\n\n---\n${context}`;
       }
 
+      const tokens_without_hippo = Math.max(eligible_tokens, tokens_injected);
+
       // Log to request_log for dashboard
       try {
         const db = await getDb(config.dbPath);
         db.exec({
-          sql: `INSERT INTO request_log (id, user_id, agent_id, org_id, framework, query, memories_retrieved, tokens_injected, retrieval_ms)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          bind: [uuidv4(), user_id, agent_id || 'default', org_id || 'default', 'mcp', query.slice(0, 200), memories.length, tokens_injected, retrieval_ms],
+          sql: `INSERT INTO request_log (id, user_id, agent_id, org_id, framework, query, memories_retrieved, tokens_injected, tokens_without_hippo, retrieval_ms)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          bind: [uuidv4(), user_id, agent_id || 'default', org_id || 'default', 'mcp', query.slice(0, 200), memories.length, tokens_injected, tokens_without_hippo, retrieval_ms],
         });
         saveDb();
       } catch {}

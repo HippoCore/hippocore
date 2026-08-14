@@ -10,6 +10,7 @@ import { getFreshDb, resetDb } from '../db/sqlite.js';
 import { queryMemories, getUserProfile, getMetrics } from '../services/memory.js';
 import { buildPrompt } from '../services/ai.js';
 import { loadConfig as loadSharedConfig, VERSION } from '../config.js';
+import { calculateTokenSavings } from './metrics.js';
 
 const __dirname    = dirname(fileURLToPath(import.meta.url));
 const HTML_PATH    = join(__dirname, 'ui.html');
@@ -74,11 +75,13 @@ export async function startDashboard(configOverride = {}) {
         db.exec({
           sql: `SELECT
                   COUNT(*) as total_requests,
-                  COALESCE(AVG(retrieval_ms), 0) as avg_ms,
+                  COALESCE(SUM(CASE WHEN query NOT LIKE 'remember:%' THEN 1 ELSE 0 END), 0) as recall_requests,
+                  COALESCE(AVG(CASE WHEN query NOT LIKE 'remember:%' THEN retrieval_ms END), 0) as avg_ms,
                   COALESCE(SUM(tokens_injected), 0) as total_tokens_injected,
-                  COALESCE(AVG(tokens_injected), 0) as avg_tokens_injected,
+                  COALESCE(AVG(CASE WHEN query NOT LIKE 'remember:%' THEN tokens_injected END), 0) as avg_tokens_injected,
+                  COALESCE(SUM(tokens_without_hippo), 0) as total_tokens_without_hippo,
                   COALESCE(SUM(memories_retrieved), 0) as total_memories_retrieved,
-                  COALESCE(AVG(memories_retrieved), 0) as avg_memories_retrieved
+                  COALESCE(AVG(CASE WHEN query NOT LIKE 'remember:%' THEN memories_retrieved END), 0) as avg_memories_retrieved
                 FROM request_log`,
           callback: row => logRows.push(row),
         });
@@ -87,12 +90,13 @@ export async function startDashboard(configOverride = {}) {
         const recentLog = [];
         db.exec({
           sql: `SELECT user_id, agent_id, org_id, framework, query, memories_retrieved,
-                       tokens_injected, retrieval_ms, created_at
+                       tokens_injected, tokens_without_hippo, retrieval_ms, created_at
                 FROM request_log ORDER BY created_at DESC LIMIT 20`,
           callback: row => recentLog.push({
             user_id: row[0], agent_id: row[1], org_id: row[2], framework: row[3],
             query: row[4], memories_retrieved: row[5], tokens_injected: row[6],
-            retrieval_ms: row[7], created_at: row[8],
+            tokens_without_hippo: row[7], tokens_saved: Math.max(0, (row[7] || 0) - (row[6] || 0)),
+            retrieval_ms: row[8], created_at: row[9],
           }),
         });
 
@@ -104,23 +108,31 @@ export async function startDashboard(configOverride = {}) {
           callback: row => embModels.push({ model: row[0], count: row[1], dimensions: Math.round(row[2]) }),
         });
 
-        const lr = logRows[0] || [0,0,0,0,0,0];
+        const lr = logRows[0] || [0,0,0,0,0,0,0,0];
         const total_requests       = lr[0] || 0;
-        const avg_retrieval_ms     = parseFloat((lr[1] || 0).toFixed(1));
-        const total_tokens_injected = lr[2] || 0;
-        const avg_tokens_injected  = parseFloat((lr[3] || 0).toFixed(1));
-        const total_recalls        = lr[4] || 0;
-        const avg_memories         = parseFloat((lr[5] || 0).toFixed(1));
+        const recall_requests      = lr[1] || 0;
+        const avg_retrieval_ms     = parseFloat((lr[2] || 0).toFixed(1));
+        const total_tokens_injected = lr[3] || 0;
+        const avg_tokens_injected  = parseFloat((lr[4] || 0).toFixed(1));
+        const total_tokens_without_hippo = lr[5] || 0;
+        const total_memories_retrieved = lr[6] || 0;
+        const avg_memories         = parseFloat((lr[7] || 0).toFixed(1));
+        const savings = calculateTokenSavings(total_tokens_without_hippo, total_tokens_injected);
 
         return json(res, {
+          version: VERSION,
           ...metrics,
           embedding_models: embModels,
           request_log: {
             total_requests,
+            recall_requests,
             avg_retrieval_ms,
             total_tokens_injected,
+            total_tokens_without_hippo,
+            total_tokens_saved: savings.tokens_saved,
+            token_reduction_percent: savings.reduction_percent,
             avg_tokens_injected,
-            total_recalls,
+            total_memories_retrieved,
             avg_memories_per_recall: avg_memories,
           },
           recent_requests: recentLog,
