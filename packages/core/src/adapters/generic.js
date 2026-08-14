@@ -79,8 +79,8 @@ export function createMemoryMiddleware(config = {}) {
       }, cfg);
     },
 
-    async store(userId, content, type = 'preference') {
-      return addMemory({ user_id: userId, agent_id: cfg.agentId, org_id: cfg.orgId, type, content }, cfg);
+    async store(userId, content, type = 'preference', options = {}) {
+      return addMemory({ user_id: userId, agent_id: cfg.agentId, org_id: cfg.orgId, type, content, ...options }, cfg);
     },
 
     async query(userId, queryText, limit = 5) {

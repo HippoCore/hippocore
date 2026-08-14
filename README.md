@@ -64,6 +64,20 @@ await memory.after('user-123', userMessage, response);
 
 Recall combines semantic similarity, keyword overlap, and learned importance. Exact duplicate entries within a namespace are stored once.
 
+## Trustworthy memory
+
+Hippo Core keeps evidence instead of silently overwriting it. Give changing information a stable `memory_key`:
+
+```js
+await memory.store('user-123', 'I prefer concise answers', 'preference', {
+  memory_key: 'preference.response_detail'
+});
+```
+
+New evidence for that key supersedes the previous value while preserving its source and validity period. Normal recall returns only active evidence. The JavaScript API also exposes `getMemoryHistory`, `resolveConflict`, and `retractMemory`; MCP clients receive `hippo_history`, `hippo_resolve`, and `hippo_retract`.
+
+Memories can carry `source_kind`, `source_ref`, `confidence`, `valid_from`, `valid_until`, and an explicit/inferred evidence status. Every recalled memory includes the semantic, lexical, importance, and confidence signals that caused its selection.
+
 ## Local dashboard
 
 ```bash

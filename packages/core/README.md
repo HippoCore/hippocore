@@ -16,7 +16,9 @@ export HIPPO_CORE_API_KEY="your-key"
 hippo-core mcp
 ```
 
-The MCP server provides `hippo_recall`, `hippo_remember`, and `hippo_status`.
+The MCP server provides `hippo_recall`, `hippo_remember`, `hippo_history`, `hippo_resolve`, `hippo_retract`, and `hippo_status`.
+
+Stable `memory_key` values let new evidence supersede old evidence without deleting history. Provenance, confidence, temporal validity, lifecycle status, relations, and audit events remain inspectable, while normal recall returns only active evidence.
 
 ## JavaScript
 

@@ -72,10 +72,13 @@ export async function extractStructured(content, config = {}) {
     messages: [
       {
         role: 'system',
-        content: `You are a memory extraction engine.
-Extract structured information from user interaction text.
+        content: `You are a selective memory extraction engine.
+Decide whether this interaction contains durable information useful in a future session.
+Routine greetings, transient chatter, and facts already implicit in the current task should not be remembered.
+Extract structured information only when useful.
 Return ONLY valid JSON — no markdown, no explanation.
-Schema: { "facts": ["string"], "preferences": ["string"], "intent": "string", "entities": { "key": "value" } }
+Schema: { "should_remember": true, "reason": "string", "memory_key": "stable.subject.key or null", "confidence": 0.0, "valid_from": null, "valid_until": null, "facts": ["string"], "preferences": ["string"], "intent": "string", "entities": { "key": "value" } }
+Use a stable memory_key for information that can change, such as preference.response_detail or profile.home_city.
 Extract only what is present. Empty arrays/strings for missing fields.`,
       },
       { role: 'user', content: `Extract from:\n\n${content}` },
