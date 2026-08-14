@@ -44,7 +44,7 @@ test('installs one shared vault into Codex, Claude Code, and Cursor safely', asy
 
     const claude = JSON.parse(readFileSync(join(home, '.claude.json'), 'utf8'));
     assert.equal(claude.theme, 'dark');
-    assert.deepEqual(claude.mcpServers['hippo-core'].args, ['-y', '@hippo-core/core@1.2.0', 'mcp']);
+    assert.deepEqual(claude.mcpServers['hippo-core'].args, ['-y', '@hippo-core/core@1.3.0', 'mcp']);
 
     const cursor = JSON.parse(readFileSync(join(home, '.cursor', 'mcp.json'), 'utf8'));
     assert.equal(cursor.mcpServers.existing.command, 'keep-me');

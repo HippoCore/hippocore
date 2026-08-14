@@ -31,6 +31,11 @@ hippo-core mcp
 
 The MCP server provides `hippo_recall`, `hippo_remember`, `hippo_history`, `hippo_resolve`, `hippo_retract`, and `hippo_status`.
 
+Run `hippo-core dashboard` to see the estimated accumulated context without
+Hippo Core versus the targeted context actually injected. The dashboard shows
+tokens avoided and context reduction globally and for each recent recall. This
+is a conservative context estimate, clearly distinguished from provider billing.
+
 Stable `memory_key` values let new evidence supersede old evidence without deleting history. Provenance, confidence, temporal validity, lifecycle status, relations, and audit events remain inspectable, while normal recall returns only active evidence.
 
 Interactions are selectively decomposed into atomic claims through `addMemories`, giving every independently changing fact or preference its own lifecycle. Run `npm run benchmark` to execute the bundled deterministic quality suite across temporal accuracy, conflict safety, privacy isolation, user control, and atomicity.

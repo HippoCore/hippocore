@@ -67,6 +67,36 @@ function ns(params) {
   };
 }
 
+function scopeFilter(params, alias = '') {
+  const { user_id, agent_id, org_id } = ns(params);
+  const prefix = alias ? `${alias}.` : '';
+  switch (params.scope || 'user') {
+    case 'agent':
+      return { clause: `${prefix}agent_id = ? AND ${prefix}org_id = ?`, binds: [agent_id, org_id] };
+    case 'org':
+      return { clause: `${prefix}org_id = ?`, binds: [org_id] };
+    case 'user+agent':
+      return { clause: `${prefix}user_id = ? AND ${prefix}agent_id = ? AND ${prefix}org_id = ?`, binds: [user_id, agent_id, org_id] };
+    default:
+      return { clause: `${prefix}user_id = ? AND ${prefix}org_id = ?`, binds: [user_id, org_id] };
+  }
+}
+
+export async function estimateEligibleMemoryTokens(params, config = {}) {
+  const db = await getDb(config.dbPath);
+  const { clause, binds } = scopeFilter(params, 'm');
+  const lifecycle = params.include_history
+    ? ''
+    : `AND m.status = 'active' AND (m.valid_until IS NULL OR datetime(m.valid_until) > datetime('now'))`;
+  let total = 0;
+  db.exec({
+    sql: `SELECT COALESCE(SUM(m.token_count), 0) FROM memories m WHERE ${clause} ${lifecycle}`,
+    bind: binds,
+    callback: row => { total = Number(row[0]) || 0; },
+  });
+  return total;
+}
+
 function clampConfidence(value, fallback = 1) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
@@ -267,26 +297,7 @@ export async function queryMemories(params, config = {}) {
 
   const queryEmbedding = await embed(query, config);
 
-  // Build WHERE clause based on scope
-  let scopeClause;
-  let scopeBinds;
-  switch (scope) {
-    case 'agent':
-      scopeClause = 'agent_id = ? AND org_id = ?';
-      scopeBinds  = [agent_id, org_id];
-      break;
-    case 'org':
-      scopeClause = 'org_id = ?';
-      scopeBinds  = [org_id];
-      break;
-    case 'user+agent':
-      scopeClause = 'user_id = ? AND agent_id = ? AND org_id = ?';
-      scopeBinds  = [user_id, agent_id, org_id];
-      break;
-    default: // 'user'
-      scopeClause = 'user_id = ? AND org_id = ?';
-      scopeBinds  = [user_id, org_id];
-  }
+  const { clause: scopeClause, binds: scopeBinds } = scopeFilter({ user_id, agent_id, org_id, scope }, 'm');
 
   const typeClause = type_filter ? `AND m.type = '${normalizeType(type_filter)}'` : '';
   const lifecycleClause = include_history ? '' : `AND m.status = 'active' AND (m.valid_until IS NULL OR datetime(m.valid_until) > datetime('now'))`;

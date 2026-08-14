@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import Database from 'better-sqlite3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +124,15 @@ test('two live MCP processes share one vault while preserving agent boundaries',
     user_id: 'dana', agent_id: 'agent-b', org_id: 'team', scope: 'user', query: 'display mode preference',
   } });
   assert.match(sharedRecall.result.content[0].text, /Dana prefers dark mode/);
+
+  const telemetryDb = new Database(join(home, 'memory.db'), { readonly: true });
+  const telemetry = telemetryDb.prepare(
+    `SELECT tokens_without_hippo, tokens_injected FROM request_log
+     WHERE query = ? AND memories_retrieved = 1 LIMIT 1`,
+  ).get('display mode preference');
+  telemetryDb.close();
+  assert.ok(telemetry.tokens_without_hippo >= telemetry.tokens_injected);
+  assert.ok(telemetry.tokens_injected > 0);
 
   const history = await agentB.send('tools/call', { name: 'hippo_history', arguments: {
     user_id: 'dana', org_id: 'team', memory_key: 'preference.ui_theme',
