@@ -234,7 +234,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
     <li><a href="#dashboard">Token savings</a></li>
     <li><a href="#code">Quick start</a></li>
     <li><a href="https://github.com/HippoCore/hippocore" target="_blank">GitHub</a></li>
-    <li><a href="https://github.com/HippoCore/hippocore" target="_blank" class="nav-cta">Get v1.3</a></li>
+    <li><a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="nav-cta">Install</a></li>
   </ul>
 </nav>
 
@@ -291,7 +291,7 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
   </p>
 
   <div class="hero-install" onclick="copyInstall(this)">
-    <code>git clone https://github.com/HippoCore/hippocore.git</code>
+    <code>npx @hippo-core/core install</code>
     <button class="copy-btn" id="copy-btn">copy</button>
   </div>
 
@@ -628,13 +628,8 @@ footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:
       <button class="code-tab" onclick="showTab('generic',this)">Any framework</button>
     </div>
 
-    <div class="code-block active" id="tab-setup"># Get the current v1.3 release
-git clone https://github.com/HippoCore/hippocore.git
-cd hippocore
-npm install
-
-# Connect detected AI agents
-node packages/core/src/cli/index.js install
+    <div class="code-block active" id="tab-setup"># Install Hippo Core and connect detected AI agents
+npx @hippo-core/core install
 
 # No model, API key, account, or cloud service required.
 # Hippo Core now recalls and remembers automatically.
@@ -709,7 +704,7 @@ async function runAgent(userId, userMessage) {
   <h2 class="cta-title reveal">Stop paying for agents<br>that forget.</h2>
   <p class="cta-sub reveal">Open source. MIT licensed. Ships today.</p>
   <div class="hero-actions reveal">
-    <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-primary">Get v1.3 →</a>
+    <a href="https://www.npmjs.com/package/@hippo-core/core" target="_blank" class="btn-primary">Install Hippo Core →</a>
     <a href="https://github.com/HippoCore/hippocore" target="_blank" class="btn-secondary">View on GitHub</a>
   </div>
 </section>
@@ -726,7 +721,7 @@ async function runAgent(userId, userMessage) {
 </footer>
 
 <script>
-function copyInstall(el){navigator.clipboard.writeText('git clone https://github.com/HippoCore/hippocore.git').then(()=>{const btn=document.getElementById('copy-btn');btn.textContent='copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},2000);})}
+function copyInstall(el){navigator.clipboard.writeText('npx @hippo-core/core install').then(()=>{const btn=document.getElementById('copy-btn');btn.textContent='copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},2000);})}
 function showTab(id,btn){document.querySelectorAll('.code-block').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.code-tab').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
 const observer=new IntersectionObserver((entries)=>{entries.forEach((entry,i)=>{if(entry.isIntersecting){setTimeout(()=>{entry.target.classList.add('visible');},i*80);observer.unobserve(entry.target);}});},{threshold:0.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
