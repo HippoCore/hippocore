@@ -18,6 +18,9 @@ export {
   compressMemories,
   reEmbedAll,
   getMetrics,
+  getMemoryHistory,
+  resolveConflict,
+  retractMemory,
 } from './services/memory.js';
 
 export {

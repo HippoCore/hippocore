@@ -1,6 +1,6 @@
 {
   "name": "hippocore",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Local memory infrastructure for MCP-compatible AI agents",
   "workspaces": ["packages/*"],

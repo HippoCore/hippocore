@@ -54,6 +54,7 @@ const TOOLS = [
         agent_id: { type: 'string', description: 'Agent ID for scoping (optional)' },
         scope:    { type: 'string', enum: ['user','agent','org'], default: 'user' },
         limit:    { type: 'number', description: 'Max memories to return (default: 5)', default: 5 },
+        include_history: { type: 'boolean', description: 'Include superseded, disputed, and retracted evidence', default: false },
       },
       required: ['query'],
     },
@@ -68,6 +69,13 @@ const TOOLS = [
         user_id:  { type: 'string', description: 'User or project ID', default: 'default' },
         agent_id: { type: 'string', description: 'Agent ID (optional)' },
         type:     { type: 'string', enum: ['preference','behavioral','long_term','conversation','event'], default: 'long_term' },
+        memory_key: { type: 'string', description: 'Stable key for a fact or preference that may change' },
+        source_kind: { type: 'string', enum: ['user','agent','tool','import'], default: 'user' },
+        source_ref: { type: 'string', description: 'Optional source message, URL, file, or event identifier' },
+        confidence: { type: 'number', minimum: 0, maximum: 1 },
+        valid_from: { type: 'string', description: 'ISO timestamp when this became true' },
+        valid_until: { type: 'string', description: 'ISO timestamp when this stopped being true' },
+        conflict_mode: { type: 'string', enum: ['supersede','dispute'], default: 'supersede' },
       },
       required: ['content'],
     },
@@ -77,11 +85,32 @@ const TOOLS = [
     description: 'Check Hippo Core memory system status and statistics.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'hippo_history',
+    description: 'Inspect the complete evidence history for one logical memory key.',
+    inputSchema: { type: 'object', properties: {
+      memory_key: { type: 'string' }, user_id: { type: 'string', default: 'default' }, org_id: { type: 'string' },
+    }, required: ['memory_key'] },
+  },
+  {
+    name: 'hippo_resolve',
+    description: 'Resolve disputed memories by selecting a winner while preserving losing evidence.',
+    inputSchema: { type: 'object', properties: {
+      winner_id: { type: 'string' }, loser_ids: { type: 'array', items: { type: 'string' } }, actor: { type: 'string' },
+    }, required: ['winner_id'] },
+  },
+  {
+    name: 'hippo_retract',
+    description: 'Retract a memory without deleting its audit history.',
+    inputSchema: { type: 'object', properties: {
+      memory_id: { type: 'string' }, reason: { type: 'string' },
+    }, required: ['memory_id'] },
+  },
 ];
 
 async function handleToolCall(id, toolName, args) {
   const config = loadConfig();
-  const { addMemory, queryMemories, getMetrics } = await import('../services/memory.js');
+  const { addMemory, queryMemories, getMetrics, getMemoryHistory, resolveConflict, retractMemory } = await import('../services/memory.js');
   const { buildMemoryContext } = await import('../services/ai.js');
   const { getDb, saveDb } = await import('../db/sqlite.js');
   const { v4: uuidv4 } = await import('uuid');
@@ -90,10 +119,10 @@ async function handleToolCall(id, toolName, args) {
 
   try {
     if (toolName === 'hippo_recall') {
-      const { query, user_id = 'default', agent_id, org_id, scope = 'user', limit = 5 } = args;
+      const { query, user_id = 'default', agent_id, org_id, scope = 'user', limit = 5, include_history = false } = args;
       if (!query) return replyError(id, -32602, 'query is required');
 
-      const memories = await queryMemories({ user_id, agent_id, org_id, query, limit, scope }, config);
+      const memories = await queryMemories({ user_id, agent_id, org_id, query, limit, scope, include_history }, config);
       const retrieval_ms = Date.now() - t0;
 
       // Count tokens actually injected
@@ -106,7 +135,7 @@ async function handleToolCall(id, toolName, args) {
         const context = buildMemoryContext(memories, config.maxMemoryTokens || 800);
         tokens_injected = estimateTokens(context);
         const summary = memories.map((m, i) =>
-          `[${i+1}] (${m.type}, relevance: ${m.similarity.toFixed(3)}) ${m.content.slice(0, 200)}`
+          `[${i+1}] (${m.type}, status: ${m.status}, score: ${m.blended.toFixed(3)}, source: ${m.provenance.source_kind}) ${m.content.slice(0, 200)}`
         ).join('\n');
         responseText = `Retrieved ${memories.length} relevant memories (${tokens_injected} tokens of context):\n\n${summary}\n\n---\n${context}`;
       }
@@ -126,10 +155,10 @@ async function handleToolCall(id, toolName, args) {
     }
 
     if (toolName === 'hippo_remember') {
-      const { content, user_id = 'default', agent_id, org_id, type = 'long_term' } = args;
+      const { content, user_id = 'default', agent_id, org_id, type = 'long_term', ...trust } = args;
       if (!content) return replyError(id, -32602, 'content is required');
 
-      const memory = await addMemory({ user_id, agent_id, org_id, type, content }, config);
+      const memory = await addMemory({ user_id, agent_id, org_id, type, content, ...trust }, config);
       const retrieval_ms = Date.now() - t0;
 
       // Log to request_log
@@ -143,7 +172,25 @@ async function handleToolCall(id, toolName, args) {
         saveDb();
       } catch {}
 
-      return reply(id, { content: [{ type: 'text', text: `✓ Stored memory: "${content.slice(0, 100)}${content.length > 100 ? '...' : ''}"` }] });
+      const message = memory.skipped
+        ? `Skipped memory: ${memory.reason}`
+        : `✓ Stored memory ${memory.id}${memory.memory_key ? ` (${memory.memory_key})` : ''}: "${content.slice(0, 100)}${content.length > 100 ? '...' : ''}"`;
+      return reply(id, { content: [{ type: 'text', text: message }] });
+    }
+
+    if (toolName === 'hippo_history') {
+      const history = await getMemoryHistory(args, config);
+      return reply(id, { content: [{ type: 'text', text: JSON.stringify(history, null, 2) }] });
+    }
+
+    if (toolName === 'hippo_resolve') {
+      const result = await resolveConflict(args, config);
+      return reply(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
+    }
+
+    if (toolName === 'hippo_retract') {
+      const result = await retractMemory(args.memory_id, args.reason || '', config);
+      return reply(id, { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
     }
 
     if (toolName === 'hippo_status') {

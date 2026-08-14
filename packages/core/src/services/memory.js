@@ -67,18 +67,59 @@ function ns(params) {
   };
 }
 
+function clampConfidence(value, fallback = 1) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+}
+
+function addEvent(db, memoryId, eventType, details = {}, actor = 'system') {
+  db.exec({
+    sql: `INSERT INTO memory_events (id, memory_id, event_type, actor, details) VALUES (?, ?, ?, ?, ?)`,
+    bind: [uuidv4(), memoryId, eventType, actor, JSON.stringify(details)],
+  });
+}
+
+function addRelation(db, fromId, toId, relationType) {
+  db.exec({
+    sql: `INSERT OR IGNORE INTO memory_relations (id, from_memory_id, to_memory_id, relation_type)
+          VALUES (?, ?, ?, ?)`,
+    bind: [uuidv4(), fromId, toId, relationType],
+  });
+}
+
 // ── Add memory ────────────────────────────────────────────────────────────────
 export async function addMemory(params, config = {}) {
   const { user_id, agent_id, org_id } = ns(params);
   const { type, content } = params;
+  if (typeof content !== 'string' || !content.trim()) throw new Error('content is required');
   const db         = await getDb(config.dbPath);
   const memoryType = normalizeType(type);
+  const normalizedContent = content.trim();
+
+  const structured = await extractStructured(normalizedContent, config);
+
+  const shouldRemember = params.should_remember ?? params.shouldRemember ?? structured.should_remember;
+  if (shouldRemember === false) {
+    return { skipped: true, reason: structured.reason || 'Memory policy rejected low-signal content' };
+  }
+
+  const embedding = await embed(normalizedContent, config);
+
+  const memoryKey = params.memory_key || params.memoryKey || structured.memory_key || null;
+  const validFrom = params.valid_from || params.validFrom || structured.valid_from || new Date().toISOString();
+  const validUntil = params.valid_until || params.validUntil || structured.valid_until || null;
+  const sourceKind = params.source_kind || params.sourceKind || 'user';
+  const sourceRef = params.source_ref || params.sourceRef || null;
+  const evidenceStatus = params.evidence_status || params.evidenceStatus || (sourceKind === 'user' ? 'explicit' : 'inferred');
+  const confidence = clampConfidence(params.confidence ?? structured.confidence, evidenceStatus === 'explicit' ? 1 : 0.6);
+  const conflictMode = params.conflict_mode || params.conflictMode || 'supersede';
+  const actor = params.actor || agent_id;
 
   const duplicate = [];
   db.exec({
     sql: `SELECT id, importance_score, created_at FROM memories
           WHERE user_id = ? AND agent_id = ? AND org_id = ? AND type = ? AND content = ? LIMIT 1`,
-    bind: [user_id, agent_id, org_id, memoryType, content.trim()],
+    bind: [user_id, agent_id, org_id, memoryType, normalizedContent],
     callback: row => duplicate.push(row),
   });
   if (duplicate.length) {
@@ -88,22 +129,34 @@ export async function addMemory(params, config = {}) {
   const id         = uuidv4();
   const structId   = uuidv4();
 
-  const [embedding, structured] = await Promise.all([
-    embed(content, config),
-    extractStructured(content, config),
-  ]);
-
   const importance   = computeImportance({ recencyDays: 0, accessCount: 0 });
-  const tokenCount   = estimateTokens(content);
+  const tokenCount   = estimateTokens(normalizedContent);
   const now          = new Date().toISOString();
   const embModel     = config.embeddingModel || 'text-embedding-3-small';
   const dimensions   = embedding.length;
 
+  const prior = [];
+  if (memoryKey) {
+    db.exec({
+      sql: `SELECT id, content, valid_from FROM memories
+            WHERE user_id = ? AND org_id = ? AND memory_key = ? AND status = 'active'
+            ORDER BY valid_from DESC, created_at DESC LIMIT 1`,
+      bind: [user_id, org_id, memoryKey],
+      callback: row => prior.push({ id: row[0], content: row[1], valid_from: row[2] }),
+    });
+  }
+
+  const initialStatus = prior.length && conflictMode === 'dispute' ? 'disputed' : 'active';
+
   db.exec({
     sql: `INSERT INTO memories
-            (id, user_id, agent_id, org_id, content, type, importance_score, token_count, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    bind: [id, user_id, agent_id, org_id, content.trim(), memoryType, importance, tokenCount, now, now],
+            (id, user_id, agent_id, org_id, content, type, importance_score, token_count,
+             source_kind, source_ref, confidence, evidence_status, valid_from, valid_until,
+             status, memory_key, metadata, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    bind: [id, user_id, agent_id, org_id, normalizedContent, memoryType, importance, tokenCount,
+      sourceKind, sourceRef, confidence, evidenceStatus, validFrom, validUntil, initialStatus,
+      memoryKey, JSON.stringify(params.metadata || {}), now, now],
   });
 
   db.exec({
@@ -124,8 +177,33 @@ export async function addMemory(params, config = {}) {
     ],
   });
 
+  addEvent(db, id, 'created', { source_kind: sourceKind, source_ref: sourceRef, confidence, evidence_status: evidenceStatus }, actor);
+
+  if (prior.length) {
+    const previous = prior[0];
+    if (conflictMode === 'dispute') {
+      db.exec({ sql: `UPDATE memories SET status = 'disputed', updated_at = ? WHERE id = ?`, bind: [now, previous.id] });
+      addRelation(db, id, previous.id, 'contradicts');
+      addEvent(db, id, 'disputed', { contradicts: previous.id }, actor);
+      addEvent(db, previous.id, 'disputed', { contradicted_by: id }, actor);
+    } else {
+      db.exec({
+        sql: `UPDATE memories SET status = 'superseded', valid_until = ?, updated_at = ? WHERE id = ?`,
+        bind: [validFrom, now, previous.id],
+      });
+      addRelation(db, id, previous.id, 'supersedes');
+      addEvent(db, id, 'supersedes', { memory_id: previous.id }, actor);
+      addEvent(db, previous.id, 'superseded', { by_memory_id: id }, actor);
+    }
+  }
+
   saveDb();
-  return { id, user_id, agent_id, org_id, type: memoryType, importance_score: importance, created_at: now, structured };
+  return {
+    id, user_id, agent_id, org_id, type: memoryType, importance_score: importance,
+    created_at: now, structured, status: initialStatus, memory_key: memoryKey,
+    provenance: { source_kind: sourceKind, source_ref: sourceRef, evidence_status: evidenceStatus, confidence },
+    valid_from: validFrom, valid_until: validUntil, supersedes: prior.length && conflictMode !== 'dispute' ? prior[0].id : null,
+  };
 }
 
 // ── Query memories ────────────────────────────────────────────────────────────
@@ -137,6 +215,7 @@ export async function queryMemories(params, config = {}) {
     type_filter,
     scope          = 'user',       // 'user' | 'agent' | 'org' | 'user+agent'
     retrievalLimit = 5000,
+    include_history = false,
   } = params;
 
   const db        = await getDb(config.dbPath);
@@ -167,17 +246,20 @@ export async function queryMemories(params, config = {}) {
   }
 
   const typeClause = type_filter ? `AND m.type = '${normalizeType(type_filter)}'` : '';
+  const lifecycleClause = include_history ? '' : `AND m.status = 'active' AND (m.valid_until IS NULL OR datetime(m.valid_until) > datetime('now'))`;
 
   const rows = [];
   db.exec({
     sql: `SELECT m.id, m.user_id, m.agent_id, m.org_id, m.content, m.type,
                  m.importance_score, m.access_count, m.created_at, m.token_count,
                  me.embedding, me.embedding_model,
-                 sm.facts, sm.preferences, sm.intent, sm.entities
+                 sm.facts, sm.preferences, sm.intent, sm.entities,
+                 m.source_kind, m.source_ref, m.confidence, m.evidence_status,
+                 m.valid_from, m.valid_until, m.status, m.memory_key, m.metadata
           FROM memories m
           LEFT JOIN memory_embeddings me ON me.memory_id = m.id
           LEFT JOIN structured_memory sm ON sm.memory_id = m.id
-          WHERE ${scopeClause} ${typeClause}
+          WHERE ${scopeClause} ${typeClause} ${lifecycleClause}
           ORDER BY m.created_at DESC
           LIMIT ?`,
     bind:     [...scopeBinds, candidates],
@@ -198,7 +280,8 @@ export async function queryMemories(params, config = {}) {
       const emb        = safeJsonParse(r[10], null);
       const similarity = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
       const lexical    = lexicalSimilarity(query, `${r[4]} ${r[12] || ''} ${r[13] || ''} ${r[14] || ''}`);
-      const blended    = 0.6 * similarity + 0.2 * lexical + 0.2 * r[6];
+      const confidence = clampConfidence(r[18], 1);
+      const blended    = 0.55 * similarity + 0.15 * lexical + 0.15 * r[6] + 0.15 * confidence;
       return { row: r, similarity, lexical, blended };
     })
     .sort((a, b) => b.blended - a.blended)
@@ -221,6 +304,27 @@ export async function queryMemories(params, config = {}) {
     lexical:          parseFloat(lexical.toFixed(4)),
     blended:          parseFloat(blended.toFixed(4)),
     created_at:       row[8],
+    status:           row[22],
+    memory_key:       row[23],
+    valid_from:       row[20],
+    valid_until:      row[21],
+    provenance: {
+      source_kind:    row[16],
+      source_ref:     row[17],
+      confidence:     row[18],
+      evidence_status: row[19],
+    },
+    metadata: safeJsonParse(row[24], {}),
+    explanation: {
+      summary: `Selected as ${row[22]} memory with blended score ${blended.toFixed(4)}`,
+      signals: {
+        semantic_similarity: parseFloat(similarity.toFixed(4)),
+        lexical_overlap: parseFloat(lexical.toFixed(4)),
+        importance: parseFloat(Number(row[6]).toFixed(4)),
+        confidence: parseFloat(Number(row[18]).toFixed(4)),
+      },
+      evidence: { source_kind: row[16], source_ref: row[17], evidence_status: row[19] },
+    },
     structured: {
       facts:       safeJsonParse(row[12], []),
       preferences: safeJsonParse(row[13], []),
@@ -231,6 +335,67 @@ export async function queryMemories(params, config = {}) {
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────
+export async function getMemoryHistory(params, config = {}) {
+  const { user_id, org_id } = ns(params);
+  const memoryKey = params.memory_key || params.memoryKey;
+  if (!memoryKey) throw new Error('memory_key is required');
+  const db = await getDb(config.dbPath);
+  const rows = [];
+  db.exec({
+    sql: `SELECT id, content, type, status, confidence, evidence_status, source_kind, source_ref,
+                 valid_from, valid_until, created_at, metadata
+          FROM memories WHERE user_id = ? AND org_id = ? AND memory_key = ?
+          ORDER BY valid_from ASC, created_at ASC`,
+    bind: [user_id, org_id, memoryKey],
+    callback: row => rows.push({
+      id: row[0], content: row[1], type: row[2], status: row[3], confidence: row[4],
+      evidence_status: row[5], source_kind: row[6], source_ref: row[7],
+      valid_from: row[8], valid_until: row[9], created_at: row[10], metadata: safeJsonParse(row[11], {}),
+    }),
+  });
+  for (const memory of rows) {
+    memory.events = [];
+    db.exec({
+      sql: `SELECT event_type, actor, details, created_at FROM memory_events
+            WHERE memory_id = ? ORDER BY created_at ASC`,
+      bind: [memory.id],
+      callback: row => memory.events.push({ type: row[0], actor: row[1], details: safeJsonParse(row[2], {}), created_at: row[3] }),
+    });
+    memory.relations = [];
+    db.exec({
+      sql: `SELECT from_memory_id, to_memory_id, relation_type, created_at FROM memory_relations
+            WHERE from_memory_id = ? OR to_memory_id = ? ORDER BY created_at ASC`,
+      bind: [memory.id, memory.id],
+      callback: row => memory.relations.push({ from: row[0], to: row[1], type: row[2], created_at: row[3] }),
+    });
+  }
+  return rows;
+}
+
+export async function resolveConflict({ winner_id, loser_ids = [], actor = 'user' }, config = {}) {
+  if (!winner_id) throw new Error('winner_id is required');
+  const db = await getDb(config.dbPath);
+  const now = new Date().toISOString();
+  db.exec({ sql: `UPDATE memories SET status = 'active', valid_until = NULL, updated_at = ? WHERE id = ?`, bind: [now, winner_id] });
+  addEvent(db, winner_id, 'conflict_resolved', { outcome: 'winner', loser_ids }, actor);
+  for (const loserId of loser_ids) {
+    db.exec({ sql: `UPDATE memories SET status = 'superseded', valid_until = ?, updated_at = ? WHERE id = ?`, bind: [now, now, loserId] });
+    addRelation(db, winner_id, loserId, 'supersedes');
+    addEvent(db, loserId, 'conflict_resolved', { outcome: 'superseded', winner_id }, actor);
+  }
+  saveDb();
+  return { winner_id, superseded: loser_ids, resolved_at: now };
+}
+
+export async function retractMemory(memory_id, reason = '', config = {}) {
+  const db = await getDb(config.dbPath);
+  const now = new Date().toISOString();
+  db.exec({ sql: `UPDATE memories SET status = 'retracted', valid_until = ?, updated_at = ? WHERE id = ?`, bind: [now, now, memory_id] });
+  addEvent(db, memory_id, 'retracted', { reason }, 'user');
+  saveDb();
+  return { id: memory_id, status: 'retracted', retracted_at: now };
+}
+
 export async function applyFeedback({ memory_id, outcome }, config = {}) {
   const db    = await getDb(config.dbPath);
   const delta = outcome === 'positive' ? 0.1 : outcome === 'negative' ? -0.15 : null;
@@ -258,7 +423,9 @@ export async function getUserProfile(user_id, config = {}) {
   db.exec({
     sql: `SELECT m.id, m.type, m.content, m.importance_score, m.access_count,
                  m.token_count, m.agent_id, m.org_id, m.created_at,
-                 sm.facts, sm.preferences, sm.intent, sm.entities
+                 sm.facts, sm.preferences, sm.intent, sm.entities,
+                 m.status, m.memory_key, m.source_kind, m.source_ref, m.confidence,
+                 m.evidence_status, m.valid_from, m.valid_until
           FROM memories m
           LEFT JOIN structured_memory sm ON sm.memory_id = m.id
           WHERE m.user_id = ? AND m.org_id = ?
@@ -273,6 +440,8 @@ export async function getUserProfile(user_id, config = {}) {
     access_count: r[4], token_count: r[5], agent_id: r[6], org_id: r[7], created_at: r[8],
     facts: safeJsonParse(r[9], []), preferences: safeJsonParse(r[10], []),
     intent: r[11] || '', entities: safeJsonParse(r[12], {}),
+    status: r[13], memory_key: r[14], source_kind: r[15], source_ref: r[16],
+    confidence: r[17], evidence_status: r[18], valid_from: r[19], valid_until: r[20],
   }));
 }
 
@@ -329,6 +498,12 @@ export async function getMetrics(config = {}) {
     callback: (row) => typeRows.push({ type: row[0], count: row[1] }),
   });
 
+  const statusRows = [];
+  db.exec({
+    sql: `SELECT status, COUNT(*) as count FROM memories GROUP BY status ORDER BY count DESC`,
+    callback: row => statusRows.push({ status: row[0], count: row[1] }),
+  });
+
   const agentRows = [];
   db.exec({
     sql: `SELECT agent_id, COUNT(*) as memory_count FROM memories GROUP BY agent_id ORDER BY memory_count DESC LIMIT 20`,
@@ -352,6 +527,7 @@ export async function getMetrics(config = {}) {
     avg_tokens_per_memory: parseFloat((r[5] || 0).toFixed(1)),
     total_retrievals:      r[6] || 0,
     by_type:               typeRows,
+    by_status:             statusRows,
     by_agent:              agentRows,
     top_users:             userRows,
   };
