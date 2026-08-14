@@ -9,6 +9,7 @@ import { createServer } from 'http';
 import { getFreshDb, resetDb } from '../db/sqlite.js';
 import { queryMemories, getUserProfile, getMetrics } from '../services/memory.js';
 import { buildPrompt } from '../services/ai.js';
+import { loadConfig as loadSharedConfig } from '../config.js';
 
 const __dirname    = dirname(fileURLToPath(import.meta.url));
 const HTML_PATH    = join(__dirname, 'ui.html');
@@ -17,6 +18,7 @@ const DEFAULT_DB   = join(HOME, '.hippo-core', 'memory.db');
 const CONFIG_PATH  = join(HOME, '.hippo-core', 'config.json');
 
 function loadConfig(override = {}) {
+  return loadSharedConfig(override);
   let cfg = { dbPath: DEFAULT_DB };
   if (existsSync(CONFIG_PATH)) {
     try { cfg = { ...cfg, ...JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) }; } catch {}

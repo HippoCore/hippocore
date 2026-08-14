@@ -1,164 +1,83 @@
-🦛 Hippo Core
-Persistent memory for AI agents. Drop-in. Zero infrastructure.
+# Hippo Core
 
-Named for the hippocampus — the brain's memory center.
+Private, local memory shared by your AI coding agents.
 
-Install:
+Hippo Core gives Codex, Claude Code, Cursor, OpenClaw, and other MCP-compatible tools one durable memory they can share. Memories stay in a user-owned SQLite file; model and embedding requests go only to the provider you configure.
 
-npm install @hippo-core/core
+## Why Hippo Core
 
-Hippo Core gives your agents a memory. Every session they know who they're talking to, what was said before, and what the user cares about. Works with OpenClaw, Paperclip, Hermes, or any custom agent. Memory is stored locally in a single SQLite file — no database, no Docker, no cloud account required.
+- **One memory, many agents:** use the same facts, preferences, and project decisions across MCP clients.
+- **Local-first:** no hosted database, Docker service, or Hippo Core cloud account.
+- **Auditable:** inspect and manage the underlying memory store from the local dashboard.
+- **Scoped:** isolate or share memory by user, agent, and organization.
+- **Provider-independent:** use OpenAI-compatible hosted or local models.
 
+## Install and configure
 
-How it works
-User message
+```bash
+npm install -g @hippo-core/core
+hippo-core setup
+```
 
-  → retrieve relevant memories from .hippo-core/memory.db
+Configuration is stored at `~/.hippo-core/config.json`. API keys are not written there; supply them through the environment:
 
-  → inject context into system prompt
+```bash
+export HIPPO_CORE_API_KEY="your-key"
+```
 
-  → agent responds with full user context
+Optional overrides include `HIPPO_CORE_HOME`, `HIPPO_CORE_DB_PATH`, `HIPPO_CORE_BASE_URL`, `HIPPO_CORE_MODEL`, `HIPPO_CORE_EMBEDDING_API_KEY`, `HIPPO_CORE_EMBEDDING_BASE_URL`, and `HIPPO_CORE_EMBEDDING_MODEL`.
 
-  → store interaction
+## MCP server
 
-  → repeat
+Configure an MCP client to run:
 
-Agents that were stateless become stateful. No changes to your agent logic.
-
-
-Quick start
-import { createMemory } from '@hippo-core/core';
-
-const memory = createMemory({
-
-  apiKey: process.env.OPENAI_API_KEY,
-
-});
-
-// Before your agent runs
-
-const { systemPrompt } = await memory.before(userId, userMessage, 'You are a helpful assistant.');
-
-// Run your agent with the enriched prompt
-
-const response = await yourAgent(systemPrompt, userMessage);
-
-// After your agent responds — store it
-
-await memory.after(userId, userMessage, response);
-
-
-Framework adapters
-OpenClaw
-import { Agent } from 'openclaw';
-
-import { withMemory, memoryTools } from '@hippo-core/core/adapters/openclaw';
-
-// Option A: Automatic memory — wrap your agent
-
-const agent = withMemory(new Agent({
-
-  model: 'gpt-4o',
-
-  systemPrompt: 'You are a mortgage advisor.',
-
-}));
-
-const result = await agent.run('user_123', 'What should I know about fixed rates?');
-
-// Option B: Give the agent explicit memory tools
-
-const agent = new Agent({
-
-  model: 'gpt-4o',
-
-  tools: [...myTools, ...memoryTools()],
-
-});
-Paperclip
-import { createAgent } from 'paperclip-ai';
-
-import { memoryPlugin } from '@hippo-core/core/adapters/paperclip';
-
-const agent = createAgent({ model: 'gpt-4o' });
-
-agent.use(memoryPlugin());
-
-const result = await agent.run({ userId: 'user_123', message: 'What mortgage fits my budget?' });
-Any other framework
-import { createMemory } from '@hippo-core/core';
-
-const memory = createMemory({ apiKey: process.env.OPENAI_API_KEY });
-
-async function run(userId, userMessage) {
-
-  const { systemPrompt } = await memory.before(userId, userMessage, baseSystemPrompt);
-
-  const response = await yourAgent.run(systemPrompt, userMessage);
-
-  await memory.after(userId, userMessage, response);
-
-  return response;
-
-}
-
-
-Importance scoring
-retrieval_rank = (similarity x 0.7) + (importance x 0.3)
-
-importance     = (recency x 0.3) + (access_frequency x 0.4) + (feedback x 0.3)
-
-Memories used often and marked helpful rank higher over time.
-
-
-Configuration
-const memory = createMemory({
-
-  apiKey:         process.env.OPENAI_API_KEY,
-
-  baseURL:        'https://api.openai.com/v1',
-
-  model:          'gpt-4o-mini',
-
-  embeddingModel: 'text-embedding-3-small',
-
-  dbPath:         './.hippo-core/memory.db',
-
-  memoryLimit:    5,
-
-});
-
-Local models via Ollama:
-
+```json
 {
-
-  apiKey:         'ollama',
-
-  baseURL:        'http://localhost:11434/v1',
-
-  model:          'llama3.2',
-
-  embeddingModel: 'nomic-embed-text'
-
+  "mcpServers": {
+    "hippo-core": {
+      "command": "hippo-core",
+      "args": ["mcp"],
+      "env": {
+        "HIPPO_CORE_API_KEY": "${HIPPO_CORE_API_KEY}"
+      }
+    }
+  }
 }
+```
 
+The server exposes:
 
-What is stored
-Everything lives in .hippo-core/memory.db — a single file in your project directory. No data leaves your machine except LLM API calls.
+- `hippo_recall` — retrieve relevant memories at the beginning of work.
+- `hippo_remember` — save decisions, preferences, facts, and outcomes.
+- `hippo_status` — inspect memory and retrieval statistics.
 
+## JavaScript API
 
-Run the demo
-git clone https://github.com/HippoCore/hippocore
+```js
+import { createMemory } from '@hippo-core/core';
 
-cd hippocore && npm install
+const memory = createMemory({ agentId: 'mortgage-advisor', orgId: 'acme' });
+const { systemPrompt } = await memory.before('user-123', userMessage, baseSystemPrompt);
+const response = await runAgent(systemPrompt, userMessage);
+await memory.after('user-123', userMessage, response);
+```
 
-OPENAI_API_KEY=sk-... npm run demo
+Recall combines semantic similarity, keyword overlap, and learned importance. Exact duplicate entries within a namespace are stored once.
 
+## Local dashboard
 
-Contributing
-Adding a new framework adapter is a single file in packages/core/src/adapters/. See openclaw.js as a template. PRs welcome.
+```bash
+hippo-core dashboard
+```
 
+The dashboard listens on `http://localhost:4444` by default.
 
+## Development
 
-MIT License
+```bash
+npm install
+npm test
+npm run pack:check
+```
 
+Hippo Core is MIT licensed.

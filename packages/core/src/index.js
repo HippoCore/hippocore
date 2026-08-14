@@ -35,6 +35,7 @@ export { memoryPlugin, withMemory as withMemoryPaperclip } from './adapters/pape
 export { createMemoryRouter, startMemoryServer } from './adapters/express.js';
 export { startDashboard } from './dashboard/server.js';
 export { getDb, closeDb } from './db/sqlite.js';
+export { VERSION, getHippoHome, getConfigPath, getDefaultDbPath, loadConfig, publicConfig } from './config.js';
 
 /**
  * createMemory — main entry point for Hippo Core v0.3.0
