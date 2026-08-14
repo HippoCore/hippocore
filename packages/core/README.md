@@ -11,6 +11,15 @@ Codex, Claude Code, and Cursor installations. Use `--dry-run` to preview or
 `--client codex,claude-code,cursor` to choose explicit targets. Existing client
 settings are preserved and modified files receive a `.hippo-backup` copy.
 
+The installer also enables ambient memory. Codex, Claude Code, and Cursor recall
+context before meaningful work and save durable outcomes afterward without user
+prompts. Managed instruction blocks preserve existing rules and explicitly skip
+secrets, casual conversation, and temporary debugging noise.
+
+Without a configured model provider, Hippo Core falls back to deterministic
+local embeddings and conservative single-memory extraction. No network call or
+account is required; configuring a provider upgrades extraction quality.
+
 Hippo Core stores durable facts, preferences, decisions, and interaction outcomes in `~/.hippo-core/memory.db`. Its MCP server makes that context available to Codex, Claude Code, Cursor, OpenClaw, and other clients without a hosted database or Hippo Core cloud account.
 
 API keys are read from environment variables and are not persisted by setup:

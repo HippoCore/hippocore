@@ -14,7 +14,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getDb, saveDb } from '../db/sqlite.js';
-import { embed, extractStructured, extractMemoryItems, summarizeMemories, estimateTokens } from './ai.js';
+import { embed, extractStructured, extractMemoryItems, summarizeMemories, estimateTokens, embeddingModelName, containsSensitiveContent } from './ai.js';
 
 function computeImportance({ recencyDays = 0, accessCount = 0, explicit = 0.5 }) {
   const DECAY   = 30;
@@ -95,6 +95,9 @@ export async function addMemory(params, config = {}) {
   const db         = await getDb(config.dbPath);
   const memoryType = normalizeType(type);
   const normalizedContent = content.trim();
+  if (containsSensitiveContent(normalizedContent)) {
+    return { skipped: true, reason: 'Sensitive content is never stored' };
+  }
 
   const structured = params.structured || await extractStructured(normalizedContent, config);
 
@@ -132,7 +135,7 @@ export async function addMemory(params, config = {}) {
   const importance   = computeImportance({ recencyDays: 0, accessCount: 0 });
   const tokenCount   = estimateTokens(normalizedContent);
   const now          = new Date().toISOString();
-  const embModel     = config.embeddingModel || 'text-embedding-3-small';
+  const embModel     = embeddingModelName(config);
   const dimensions   = embedding.length;
 
   const prior = [];
@@ -212,6 +215,9 @@ export async function addMemory(params, config = {}) {
 export async function addMemories(params, config = {}) {
   const { content } = params;
   if (typeof content !== 'string' || !content.trim()) throw new Error('content is required');
+  if (containsSensitiveContent(content)) {
+    return { memories: [], skipped: true, reason: 'Sensitive content is never stored' };
+  }
   const extraction = await extractMemoryItems(content.trim(), config);
   const items = Array.isArray(extraction.memories) ? extraction.memories : [];
   if (extraction.should_remember === false || !items.length) {
@@ -307,8 +313,8 @@ export async function queryMemories(params, config = {}) {
 
   // Warn if embedding model mismatch
   const storedModel  = rows[0]?.[11];
-  const currentModel = config.embeddingModel || 'text-embedding-3-small';
-  if (storedModel && storedModel !== 'unknown' && storedModel !== currentModel) {
+  const currentModel = embeddingModelName(config);
+  if (storedModel && storedModel !== 'unknown' && storedModel !== currentModel && currentModel !== 'hippo-local-hash-v1') {
     console.warn(`[hippo-core] ⚠ Embedding model mismatch: stored=${storedModel}, current=${currentModel}. Run 'npx @hippo-core/core re-embed' to migrate.`);
   }
 
@@ -494,7 +500,7 @@ export async function reEmbedAll(config = {}, onProgress) {
     callback: (row) => rows.push({ id: row[0], content: row[1] }),
   });
 
-  const newModel = config.embeddingModel || 'text-embedding-3-small';
+  const newModel = embeddingModelName(config);
   let done = 0;
 
   for (const { id, content } of rows) {

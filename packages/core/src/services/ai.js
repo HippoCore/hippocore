@@ -13,6 +13,58 @@ import OpenAI from 'openai';
 let _chatClient      = null;
 let _embeddingClient = null;
 
+function hasConfiguredProvider(config = {}) {
+  if (config.offline === true) return false;
+  const key = config.embeddingApiKey || config.apiKey
+    || process.env.HIPPO_CORE_EMBEDDING_API_KEY
+    || process.env.HIPPO_CORE_API_KEY
+    || process.env.OPENAI_API_KEY;
+  const baseURL = config.embeddingBaseURL || config.baseURL
+    || process.env.HIPPO_CORE_EMBEDDING_BASE_URL
+    || process.env.HIPPO_CORE_BASE_URL;
+  return Boolean(key) || ['ollama', 'lmstudio'].includes(config.provider)
+    || /localhost|127\.0\.0\.1/i.test(baseURL || '');
+}
+
+export function embeddingModelName(config = {}) {
+  return hasConfiguredProvider(config)
+    ? (config.embeddingModel || process.env.HIPPO_CORE_EMBEDDING_MODEL || 'text-embedding-3-small')
+    : 'hippo-local-hash-v1';
+}
+
+export function containsSensitiveContent(content = '') {
+  return /-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(?:api[_ -]?key|access[_ -]?token|password|passwd|secret)\s*[:=]\s*\S+|\bsk-[A-Za-z0-9_-]{16,}\b/i.test(content);
+}
+
+function localEmbedding(text, dimensions = 256) {
+  const vector = Array(dimensions).fill(0);
+  const tokens = text.toLowerCase().match(/[a-z0-9][a-z0-9_-]+/g) || [];
+  for (const token of tokens) {
+    let hash = 2166136261;
+    for (let index = 0; index < token.length; index++) {
+      hash ^= token.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    vector[(hash >>> 0) % dimensions] += (hash & 1) ? 1 : -1;
+  }
+  const magnitude = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
+  return vector.map(value => value / magnitude);
+}
+
+function localMemoryExtraction(content) {
+  if (containsSensitiveContent(content)) {
+    return { should_remember: false, reason: 'Sensitive content is never stored', memories: [] };
+  }
+  return {
+    should_remember: true,
+    reason: 'Stored locally without a configured model provider',
+    memories: [{
+      content: content.trim(), type: 'long_term', memory_key: null, confidence: 1,
+      valid_from: null, valid_until: null, facts: [content.trim()], preferences: [], intent: '', entities: {},
+    }],
+  };
+}
+
 // ── Client factories ──────────────────────────────────────────────────────────
 
 function getChatClient(config = {}) {
@@ -46,10 +98,9 @@ export function estimateTokens(text) {
 // This is intentionally separate from the chat model.
 export async function embed(text, config = {}) {
   if (typeof config.embedder === 'function') return config.embedder(text);
+  if (!hasConfiguredProvider(config)) return localEmbedding(text);
   const client = getEmbeddingClient(config);
-  const model  = config.embeddingModel
-    || process.env.HIPPO_CORE_EMBEDDING_MODEL
-    || 'text-embedding-3-small';
+  const model = embeddingModelName(config);
 
   const response = await client.embeddings.create({
     model,
@@ -62,6 +113,11 @@ export async function embed(text, config = {}) {
 // Uses the chat client. Model can vary per agent.
 export async function extractStructured(content, config = {}) {
   if (typeof config.extractor === 'function') return config.extractor(content);
+  if (!hasConfiguredProvider(config)) {
+    const extraction = localMemoryExtraction(content);
+    const item = extraction.memories[0];
+    return item ? { ...item, should_remember: true, reason: extraction.reason } : extraction;
+  }
   const client = getChatClient(config);
   const model  = config.model || process.env.HIPPO_CORE_MODEL || 'gpt-4o-mini';
 
@@ -97,6 +153,7 @@ Extract only what is present. Empty arrays/strings for missing fields.`,
 // can be superseded, disputed, retracted, or shared without affecting siblings.
 export async function extractMemoryItems(content, config = {}) {
   if (typeof config.itemExtractor === 'function') return config.itemExtractor(content);
+  if (!hasConfiguredProvider(config)) return localMemoryExtraction(content);
   const client = getChatClient(config);
   const model = config.model || process.env.HIPPO_CORE_MODEL || 'gpt-4o-mini';
   const response = await client.chat.completions.create({

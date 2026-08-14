@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { VERSION, getHippoHome, getConfigPath, getDefaultDbPath, publicConfig } from '../config.js';
 import { getDb, closeDb } from '../db/sqlite.js';
+import { installAmbientPolicy } from './ambient.js';
 
 const JSON_CLIENTS = {
   'claude-code': {
@@ -152,6 +153,10 @@ export async function install(options = {}) {
   const results = clients.map(id => id === 'codex'
     ? writeCodex(writeOptions)
     : writeJsonClient(id, writeOptions));
+
+  for (const client of results) {
+    client.ambient = installAmbientPolicy(client.id, writeOptions);
+  }
 
   return { hippoHome, configPath, dbPath, dryRun, detected: detectClients(home), clients: results };
 }

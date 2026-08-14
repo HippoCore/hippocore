@@ -519,6 +519,12 @@ async function runInstall() {
       console.log(`    ${gray(client.path)}`);
       if (client.note) console.log(`    ${yellow(client.note)}`);
       if (client.backupPath) console.log(`    ${gray(`backup: ${client.backupPath}`)}`);
+      const ambientState = client.ambient.changed
+        ? (dryRun ? yellow('would enable') : green('enabled'))
+        : gray('already enabled');
+      console.log(`    Ambient memory: ${ambientState}`);
+      console.log(`    ${gray(client.ambient.path)}`);
+      if (client.ambient.backupPath) console.log(`    ${gray(`backup: ${client.ambient.backupPath}`)}`);
     }
   }
 
@@ -526,8 +532,8 @@ async function runInstall() {
   if (dryRun) {
     console.log(`  Preview complete. Run again without ${cyan('--dry-run')} to apply.`);
   } else {
-    console.log(`  ${green('Hippo Core is connected.')}`);
-    console.log('  Restart configured agents, then ask them to call hippo_status.');
+    console.log(`  ${green('Hippo Core is connected with ambient memory enabled.')}`);
+    console.log('  Restart configured agents. Recall and remember now happen automatically.');
     console.log('');
     console.log('  For semantic recall, set HIPPO_CORE_API_KEY (or run hippo-core setup');
     console.log('  to choose another OpenAI-compatible or local provider).');

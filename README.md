@@ -21,7 +21,19 @@ npx -y @hippo-core/core install
 That one command creates the local vault, detects Codex, Claude Code, and Cursor,
 and safely adds Hippo Core to each detected MCP configuration. Existing settings
 are preserved and changed files receive a `.hippo-backup` copy. Restart the
-configured agents, then ask one to call `hippo_status`.
+configured agents; they will recall relevant context before meaningful work and
+save durable outcomes afterward without being prompted.
+
+## Ambient memory
+
+Installation adds a managed global instruction block for Codex and Claude Code
+and an always-on Cursor rule. The policy makes memory automatic but selective:
+stable decisions, preferences, corrections, and outcomes are shared; secrets,
+casual chat, temporary debugging output, and low-value noise are never saved.
+Routine memory calls stay in the background and do not interrupt the user.
+
+Hippo Core preserves instructions you already have, backs up changed files, and
+updates only its own clearly marked block on later installs.
 
 Preview without changing anything, or select clients explicitly:
 
@@ -30,8 +42,10 @@ npx -y @hippo-core/core install --dry-run
 npx -y @hippo-core/core install --client codex,claude-code,cursor
 ```
 
-The vault works immediately. Semantic extraction and recall require an
-OpenAI-compatible or local model provider. The simplest hosted setup is:
+The vault works immediately without an account or provider key using private,
+deterministic local embeddings and conservative single-memory extraction.
+Configure an OpenAI-compatible or local model provider for richer semantic
+extraction and atomic multi-fact memories. The simplest hosted setup is:
 
 ```bash
 export HIPPO_CORE_API_KEY="your-key"

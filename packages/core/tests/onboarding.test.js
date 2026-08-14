@@ -44,11 +44,14 @@ test('installs one shared vault into Codex, Claude Code, and Cursor safely', asy
 
     const claude = JSON.parse(readFileSync(join(home, '.claude.json'), 'utf8'));
     assert.equal(claude.theme, 'dark');
-    assert.deepEqual(claude.mcpServers['hippo-core'].args, ['-y', '@hippo-core/core@1.1.0', 'mcp']);
+    assert.deepEqual(claude.mcpServers['hippo-core'].args, ['-y', '@hippo-core/core@1.2.0', 'mcp']);
 
     const cursor = JSON.parse(readFileSync(join(home, '.cursor', 'mcp.json'), 'utf8'));
     assert.equal(cursor.mcpServers.existing.command, 'keep-me');
     assert.equal(cursor.mcpServers['hippo-core'].command, 'npx');
+    assert.match(readFileSync(join(home, '.codex', 'AGENTS.md'), 'utf8'), /hippo_recall/);
+    assert.match(readFileSync(join(home, '.claude', 'CLAUDE.md'), 'utf8'), /hippo_remember/);
+    assert.match(readFileSync(join(home, '.cursor', 'rules', 'hippo-core.mdc'), 'utf8'), /alwaysApply: true/);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
@@ -65,6 +68,7 @@ test('dry-run writes nothing and repeat installs are idempotent', async () => {
     await install({ home, env: { HIPPO_CORE_HOME: hippoHome }, clients: ['codex'] });
     const again = await install({ home, env: { HIPPO_CORE_HOME: hippoHome }, clients: ['codex'] });
     assert.equal(again.clients[0].changed, false);
+    assert.equal(again.clients[0].ambient.changed, false);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
