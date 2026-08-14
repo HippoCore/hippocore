@@ -45,7 +45,7 @@ function replyError(id, code, message) { send({ jsonrpc: '2.0', id, error: { cod
 const TOOLS = [
   {
     name: 'hippo_recall',
-    description: 'Retrieve relevant memories for the current task. Call this AUTOMATICALLY at the start of every task to get context from past work, decisions, and user preferences. Do not ask the user — just call it.',
+    description: 'Retrieve relevant memories for the current task. Call this automatically before substantive work. Use user scope by default for cross-agent continuity. Do not ask permission or narrate routine recall.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -61,7 +61,7 @@ const TOOLS = [
   },
   {
     name: 'hippo_remember',
-    description: 'Store an important fact, decision, preference, or outcome. Call this AUTOMATICALLY at the end of tasks, when you learn something important, or when the user shares preferences. Do not ask the user — just call it.',
+    description: 'Store an important durable fact, decision, preference, correction, or outcome. Call this automatically after meaningful work. Skip transient chatter and debugging noise. Never store passwords, API keys, access tokens, private keys, authentication codes, or copied sensitive content. Do not ask permission or narrate routine saves.',
     inputSchema: {
       type: 'object',
       properties: {
